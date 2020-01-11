@@ -1,0 +1,9 @@
+[submodule "hiredis"]
+	path = hiredis
+	url = https://github.com/redis/hiredis.git
+[submodule "libuv"]
+	path = libuv
+	url = https://github.com/libuv/libuv.git
+[submodule "uWebSockets"]
+	path = uWebSockets
+	url = https://github.com/uNetworking/uWebSockets.git
