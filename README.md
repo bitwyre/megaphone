@@ -1,4 +1,4 @@
-# publicapi_ws_trades_uws
+# Megaphone distributes events to many web browsers
 
 This project is essentially a Redis-to-WebSocket adapter in the sense that it will publish to WebSocket clients, whatever <string> you publish to Redis.
   
