@@ -6,6 +6,14 @@ If you connect to redis via `redis-cli` and type `publish trades "some json here
 
 This means we could reuse this project for `trades`, `ticker` and `orderbook` without any code change, only a few runtime environment variables changed such as what topic we subscribe to in Redis.
 
+## Building
+
+* `git clone --recursive git@github.com:bitwyre/megaphone.git`
+* `make deps -C megaphone` (requires autotools, autoconf, automake for building libuv)
+* `make -C megaphone`
+
+Now you should have an executable, megaphone, without any non-standard dependencies to worry about (you can move this executable across different Linux systems without breakage).
+
 ## Usage
 
 Megaphone is a stand-alone executable you launch with a few envionrment variables:
@@ -17,7 +25,3 @@ Megaphone is a stand-alone executable you launch with a few envionrment variable
 Example:
 
 `REDIS_HOST=localhost REDIS_PORT=4000 REDIS_TOPIC=trades ./megaphone` launches **one** instance, you may launch as many you want, distributing the load among megaphone instances.
-
-## Building
-
-todo - should build and link statically to libuv
