@@ -130,7 +130,7 @@ int main() {
     };
 
     /* Define websocket route */
-    app->ws<PerSocketData>("/*", {
+    app->ws<PerSocketData>(path, {
         /* Shared compressor */
         .compression = uWS::SHARED_COMPRESSOR,
 
