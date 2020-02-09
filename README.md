@@ -18,9 +18,12 @@ Now you should have an executable, megaphone, without any non-standard dependenc
 
 Megaphone is a stand-alone executable you launch with a few envionrment variables:
 
-* REDIS_HOST is the address to the main, internal, Redis pub/sub node
+* REDIS_HOST is the address, hostname to the main, internal, Redis pub/sub node
 * REDIS_PORT is the port to said Redis node
 * REDIS_TOPIC is the topic we subscribe to, and listen to events on. What you publish to Redis on this topic will be sent to all WebSockets connected to this Megaphone instance
+* SERVICE_IP is the hostname of the WebSocket server
+* SERVICE_PORT is the port of the WebSocket server
+* SERVICE_PATH is the path of the WebSocket server
 
 Example:
 
