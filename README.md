@@ -24,4 +24,9 @@ Megaphone is a stand-alone executable you launch with a few envionrment variable
 
 Example:
 
-`REDIS_HOST=localhost REDIS_PORT=4000 REDIS_TOPIC=trades ./megaphone` launches **one** instance, you may launch as many you want, distributing the load among megaphone instances.
+* You need a redis-server running, for instance on `localhost` and port `6379`.
+
+* `REDIS_HOST=localhost REDIS_PORT=6379 REDIS_TOPIC=trades ./megaphone` launches **one** instance, you may launch as many you want, distributing the load among megaphone instances.
+
+
+* Now you may test by starting `redis-cli` and typing `publish trades "hello world!"`, which should trigger a distribution of "hello world! over all to megaphone connected WebSocket clients.
