@@ -4,7 +4,7 @@
   </a>
 </p>
 
-![Workflow Status](https://github.com/bitwyre/megaphone/workflows/Python%20Package/badge.svg)
+![Workflow Status](https://github.com/bitwyre/megaphone/workflows/CCPP%20CI/badge.svg)
 
 # Megaphone distributes events to many web browsers
 
