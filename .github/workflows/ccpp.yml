@@ -6,10 +6,14 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
-    
+
     steps:
-    - uses: actions/checkout@v2
-    - name: configure
-      run: make deps -C megaphone
-    - name: make
-      run: make -C megaphone
+    - uses: actions/checkout@v1
+      with:
+        submodules: recursive
+    - name: prepare
+      run: |
+        make deps
+    - name: build
+      run: |
+        make -j
