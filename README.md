@@ -48,10 +48,25 @@ Example:
 
 * Now you may test by starting `redis-cli` and typing `publish trades "hello world!"`, which should trigger a distribution of "hello world! over all to megaphone connected WebSocket clients.
 
+## Docker Example
+
+```bash
+docker run --rm \
+    -e "REDIS_TOPIC=pubsub_topic" \
+    -e "REDIS_PORT=6379" \
+    -e "REDIS_HOST=127.0.0.1" \
+    -e "SERVICE_IP=127.0.0.1" \
+    -e "SERVICE_PORT=4545" \
+    -e "SERVICE_PATH=/ws/topic" \
+    --net=host \
+    bitwyre/megaphone:latest
+```
+
 ## Contributors
 
 - [Alex Hultman](https://github.com/alexhultman)
 - [Dendi](https://github.com/dendisuhubdy)
+- [Kresna](https://github.com/ujang360)
 
 # Copyright
 
