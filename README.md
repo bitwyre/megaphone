@@ -1,3 +1,11 @@
+<p align="center">
+  <a href="https://github.com/bitwyre">
+    <img src="https://github.com/bitwyre/interface/blob/develop/public/static/images/logo.png" alt="Logo" height="80" width="auto">
+  </a>
+</p>
+
+![Workflow Status](https://github.com/bitwyre/megaphone/workflows/Python%20Package/badge.svg)
+
 # Megaphone distributes events to many web browsers
 
 This project is essentially a Redis-to-WebSocket adapter in the sense that it will publish to WebSocket clients, whatever <string> you publish to Redis.
@@ -33,3 +41,16 @@ Example:
 
 
 * Now you may test by starting `redis-cli` and typing `publish trades "hello world!"`, which should trigger a distribution of "hello world! over all to megaphone connected WebSocket clients.
+
+# Authors
+
+[Alex Hultman](https://github.com/alexhultman)
+
+## Contributors
+
+[Alex Hultman](https://github.com/alexhultman)
+
+# Copyright
+
+&copy; 2020 Alex Hultman
+&copy; 2020 Bitwyre Technologies LLC
