@@ -8,6 +8,12 @@
 
 # Megaphone distributes events to many web browsers
 
+## Authors
+
+- [Alex Hultman](https://github.com/alexhultman)
+
+## Description
+
 This project is essentially a Redis-to-WebSocket adapter in the sense that it will publish to WebSocket clients, whatever <string> you publish to Redis.
   
 If you connect to redis via `redis-cli` and type `publish trades "some json here"`, this project will send over WebSocket to all connected clients the message "some json here".
@@ -42,15 +48,12 @@ Example:
 
 * Now you may test by starting `redis-cli` and typing `publish trades "hello world!"`, which should trigger a distribution of "hello world! over all to megaphone connected WebSocket clients.
 
-# Authors
-
-[Alex Hultman](https://github.com/alexhultman)
-
 ## Contributors
 
-[Alex Hultman](https://github.com/alexhultman)
+- [Alex Hultman](https://github.com/alexhultman)
+- [Dendi](https://github.com/dendisuhubdy)
 
 # Copyright
 
-&copy; 2020 Alex Hultman
-&copy; 2020 Bitwyre Technologies LLC
+- &copy; 2020 Alex Hultman
+- &copy; 2020 Bitwyre Technologies LLC
