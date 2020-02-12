@@ -4,18 +4,14 @@
   </a>
 </p>
 
-![Workflow Status](https://github.com/bitwyre/megaphone/workflows/CCPP%20CI/badge.svg)
+![Workflow Status](https://github.com/bitwyre/megaphone/workflows/C%2FC%2B%2B%20CI/badge.svg)
 
 # Megaphone distributes events to many web browsers
 
-## Authors
-
-- [Alex Hultman](https://github.com/alexhultman)
-
 ## Description
 
-This project is essentially a Redis-to-WebSocket adapter in the sense that it will publish to WebSocket clients, whatever <string> you publish to Redis.
-  
+This project is essentially a Redis-to-WebSocket adapter in the sense that it will publish to WebSocket clients, whatever *string* you publish to Redis.
+
 If you connect to redis via `redis-cli` and type `publish trades "some json here"`, this project will send over WebSocket to all connected clients the message "some json here".
 
 This means we could reuse this project for `trades`, `ticker` and `orderbook` without any code change, only a few runtime environment variables changed such as what topic we subscribe to in Redis.
@@ -30,14 +26,14 @@ Now you should have an executable, megaphone, without any non-standard dependenc
 
 ## Usage
 
-Megaphone is a stand-alone executable you launch with a few envionrment variables:
+Megaphone is a stand-alone executable you launch with a few environment variables:
 
-* REDIS_HOST is the address, hostname to the main, internal, Redis pub/sub node
-* REDIS_PORT is the port to said Redis node
-* REDIS_TOPIC is the topic we subscribe to, and listen to events on. What you publish to Redis on this topic will be sent to all WebSockets connected to this Megaphone instance
-* SERVICE_IP is the hostname of the WebSocket server
-* SERVICE_PORT is the port of the WebSocket server
-* SERVICE_PATH is the path of the WebSocket server
+* `REDIS_HOST` is the address/hostname to the main, internal, Redis pub/sub node
+* `REDIS_PORT` is the port to said Redis node
+* `REDIS_TOPIC` is the topic we subscribe to, and listen to events on. What you publish to Redis on this topic will be sent to all WebSocket clients connected to this Megaphone instance
+* `SERVICE_IP` is the hostname of the WebSocket server
+* `SERVICE_PORT` is the port of the WebSocket server
+* `SERVICE_PATH` is the path of the WebSocket server
 
 Example:
 
@@ -62,11 +58,14 @@ docker run --rm \
     bitwyre/megaphone:latest
 ```
 
-## Contributors
+## Author
 
 - [Alex Hultman](https://github.com/alexhultman)
-- [Dendi](https://github.com/dendisuhubdy)
-- [Kresna](https://github.com/ujang360)
+
+## Contributors
+
+- [Dendi Suhubdy](https://github.com/dendisuhubdy)
+- [Aditya Kresna](https://github.com/ujang360)
 
 # Copyright
 

@@ -1,19 +1,18 @@
-name: CCPP CI
+name: C/C++ CI
 
 on: [push]
 
 jobs:
   build:
-
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
 
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
       with:
         submodules: recursive
-    - name: prepare
+    - name: Build deps
       run: |
         make deps
-    - name: build
+    - name: Build
       run: |
-        make -j
+        make -j2
