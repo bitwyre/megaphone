@@ -1,19 +1,22 @@
-name: CCPP CI
+name: C/C++ CI
 
 on: [push]
 
 jobs:
   build:
-
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
 
     steps:
-    - uses: actions/checkout@v1
-      with:
-        submodules: recursive
-    - name: prepare
+    - uses: actions/checkout@v2
+    - name: Checkout submodules
+      shell: bash
+      run: |
+        auth_header="$(git config --local --get http.https://github.com/.extraheader)"
+        git submodule sync --recursive
+        git -c "http.extraheader=$auth_header" -c protocol.version=2 submodule update --init --force --recursive --depth=1
+    - name: Build deps
       run: |
         make deps
-    - name: build
+    - name: Build
       run: |
-        make -j
+        make -j2
