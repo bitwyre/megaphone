@@ -66,6 +66,7 @@ docker run --rm \
 
 - [Dendi Suhubdy](https://github.com/dendisuhubdy)
 - [Aditya Kresna](https://github.com/ujang360)
+- [Yefta Sutanto](https://github.com/nevrending)
 
 # Copyright
 
