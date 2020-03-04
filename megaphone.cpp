@@ -144,11 +144,8 @@ int main() {
         /* 100kb then you're cut from the team */
         .maxBackpressure = 100 * 1024,
         /* Handlers */
-        .open = [](auto *ws, auto *req) {
-            /* What we subscribe to internally makes no difference (yet?) */
-
-            /* Todo: we could support a set of redis topics? */
-            ws->subscribe("trades");
+        .open = [redisTopic](auto *ws, auto *req) {
+            ws->subscribe(redisTopic);
         }
     }).listen(hostname, port, [port, hostname](auto *listenSocket) {
         if (listenSocket) {
