@@ -6,6 +6,8 @@
 #include "hiredis/async.h"
 #include "hiredis/adapters/libuv.h"
 
+/* Todo: send redis PING every 10 seconds */
+
 #include "App.h"
 
 /* We use libuv to share the same event loop across hiredis and uSockets */
@@ -18,10 +20,69 @@ const int SUBSCRIBE_LENGTH = 9;
 
 const char *redisHostname;
 int redisPort;
+const char *redisTopic;
+
+void onMessage(redisAsyncContext *c, void *reply, void *privdata);
+
+/* Connect to Redis server, manages reconnect by calling itself when needed */
+redisAsyncContext *connectToRedis(uWS::App *app) {
+    /* Connect to Redis, subscribe to topic */
+    redisAsyncContext *c = redisAsyncConnect(redisHostname, redisPort);
+    /* Failing here is typically failure to allocate resources or probably DNS resolution */
+    if (c->err) {
+        printf("Error redisAsyncConnect: %s\n", c->errstr);
+        return nullptr;
+    }
+
+    /* User data is the app */
+    c->data = app;
+
+    redisLibuvAttach(c, uv_default_loop());
+    redisAsyncSetConnectCallback(c, [](const redisAsyncContext *c, int status) {
+        /* Failure here is async, such as refused connection or timeout */
+        if (status != REDIS_OK) {
+            printf("Failed connecting to Redis: %s\n", c->errstr);
+
+            /* We retry connecting immediately */
+            connectToRedis((uWS::App *) c->data);
+
+            /* redisAsyncContext is freed by hiredis in this case */
+            return;
+        }
+
+        /* Once connected, subscribe to our topic */
+        std::string subscribeCommand = "SUBSCRIBE " + std::string(redisTopic);
+        redisAsyncCommand((redisAsyncContext *) c, onMessage, c->data, subscribeCommand.c_str());
+    });
+
+    redisAsyncSetDisconnectCallback(c, [](const redisAsyncContext *c, int status) {
+        if (status != REDIS_OK) {
+            printf("Lost connection to Redis: %s\n", c->errstr);
+
+            /* We retry connecting immediately */
+            connectToRedis((uWS::App *) c->data);
+
+            /* Again, in this case redisAsyncContext is freed by hiredis */
+            return;
+        }
+
+        /* Here we need to free the redisAsyncContext */
+        printf("Redis disconnected cleanly\n");
+
+        /* We retry connecting immediately */
+        connectToRedis((uWS::App *) c->data);
+
+        redisAsyncFree((redisAsyncContext *) c);
+    });
+
+    /* We never use this actually, no need to return */
+    return c;
+}
 
 /* Run once for every Redis message */
 void onMessage(redisAsyncContext *c, void *reply, void *privdata) {
     redisReply *r = (redisReply *) reply;
+    /* If we have no response then just return */
     if (!reply) {
         return;
     }
@@ -40,37 +101,21 @@ void onMessage(redisAsyncContext *c, void *reply, void *privdata) {
                 ((uWS::App *) privdata)->publish(topic, message, uWS::OpCode::TEXT, true);
             } else if (r->element[0]->len == SUBSCRIBE_LENGTH) {
                 /* This only means we are subscribed and connected to Redis, debug text should be removed */
-                printf("We are subscribed now!\n");
+                printf("We are connected and subscribed to Redis now\n");
+
+                /* Start a timer sending Pings to Redis */
             }
         }
     }
-}
-
-/* Todo: make this prettier */
-void connectCallback(const redisAsyncContext *c, int status) {
-    if (status != REDIS_OK) {
-        printf("Error: %s\n", c->errstr);
-        return;
-    }
-    printf("Connected...\n");
-}
-
-/* Todo: make this try to reconnect */
-void disconnectCallback(const redisAsyncContext *c, int status) {
-    if (status != REDIS_OK) {
-        printf("Error: %s\n", c->errstr);
-        return;
-    }
-    printf("Disconnected...\n");
 }
 
 int main() {
     /* Read some environment variables */
 
     /* REDIS_TOPIC is the only required environment variable */
-    const char *redisTopic = getenv("REDIS_TOPIC");
+    redisTopic = getenv("REDIS_TOPIC");
     if (!redisTopic) {
-        printf("Error: REDIS_TOPIC not set!\n");
+        printf("Error: REDIS_TOPIC environment variable not set\n");
         return -1;
     }
 
@@ -102,27 +147,13 @@ int main() {
 
     /* Create libuv loop */
     signal(SIGPIPE, SIG_IGN);
-    uv_loop_t *loop = uv_default_loop();
 
     /* Hook up uWS with external libuv loop */
-    uWS::Loop::get(loop);
+    uWS::Loop::get(uv_default_loop());
+    uWS::App app;
 
-    /* Connect to Redis, subscribe to topic */
-    redisAsyncContext *c = redisAsyncConnect(redisHostname, redisPort);
-    if (c->err) {
-        /* Todo: make prettier */
-        printf("error: %s\n", c->errstr);
-        return 1;
-    }
-
-    uWS::App *app = new uWS::App();
-
-    redisLibuvAttach(c, loop);
-    redisAsyncSetConnectCallback(c, connectCallback);
-    redisAsyncSetDisconnectCallback(c, disconnectCallback);
-
-    std::string subscribeCommand = "SUBSCRIBE " + std::string(redisTopic);
-    redisAsyncCommand(c, onMessage, app, subscribeCommand.c_str());
+    /* Connect to Redis, this will automatically keep reconnecting once disconnected */
+    connectToRedis(&app);
 
     /* We don't need any per socket data */
     struct PerSocketData {
@@ -130,7 +161,7 @@ int main() {
     };
 
     /* Define websocket route */
-    app->ws<PerSocketData>(path, {
+    app.ws<PerSocketData>(path, {
         /* Shared compressor */
         .compression = uWS::SHARED_COMPRESSOR,
 
@@ -141,10 +172,11 @@ int main() {
         /* Or we ping them, I don't know yet */
         .idleTimeout = 160,
 
-        /* 100kb then you're cut from the team */
+        /* 100kb then you're skipped until either cut or up to date */
         .maxBackpressure = 100 * 1024,
         /* Handlers */
-        .open = [redisTopic](auto *ws, auto *req) {
+        .open = [](auto *ws, auto *req) {
+            /* It matters what we subscribe to */
             ws->subscribe(redisTopic);
         }
     }).listen(hostname, port, [port, hostname](auto *listenSocket) {
