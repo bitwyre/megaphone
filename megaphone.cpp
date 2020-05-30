@@ -6,8 +6,6 @@
 #include "hiredis/async.h"
 #include "hiredis/adapters/libuv.h"
 
-/* Todo: send redis PING every 10 seconds */
-
 #include "App.h"
 
 /* We use libuv to share the same event loop across hiredis and uSockets */
@@ -21,6 +19,9 @@ const int SUBSCRIBE_LENGTH = 9;
 const char *redisHostname;
 int redisPort;
 const char *redisTopic;
+
+/* We use this to ping Redis */
+uv_timer_t pingTimer;
 
 void onMessage(redisAsyncContext *c, void *reply, void *privdata);
 
@@ -56,6 +57,9 @@ redisAsyncContext *connectToRedis(uWS::App *app) {
     });
 
     redisAsyncSetDisconnectCallback(c, [](const redisAsyncContext *c, int status) {
+        /* We are no longer connected to Redis, so stop pinging it */
+        pingTimer.data = nullptr;
+
         if (status != REDIS_OK) {
             printf("Lost connection to Redis: %s\n", c->errstr);
 
@@ -87,6 +91,8 @@ void onMessage(redisAsyncContext *c, void *reply, void *privdata) {
         return;
     }
 
+    /* PONG responses are discarded by hiredis even though they technically reach us */
+
     if (r->type == REDIS_REPLY_ARRAY) {
         /* We always expect action, topic, message */
         if (r->elements == 3) {
@@ -104,6 +110,7 @@ void onMessage(redisAsyncContext *c, void *reply, void *privdata) {
                 printf("We are connected and subscribed to Redis now\n");
 
                 /* Start a timer sending Pings to Redis */
+                pingTimer.data = c;
             }
         }
     }
@@ -151,6 +158,18 @@ int main() {
     /* Hook up uWS with external libuv loop */
     uWS::Loop::get(uv_default_loop());
     uWS::App app;
+
+    /* Start a timer sending pings to Redis every 10 seconds */
+    uv_timer_init(uv_default_loop(), &pingTimer);
+    pingTimer.data = nullptr;
+    uv_timer_start(&pingTimer, [](uv_timer_t *t) {
+        /* We store currently connected Redis context in user data */
+        redisAsyncContext *c = (redisAsyncContext *) t->data;
+
+        /* Redis does respond with a PONG but hiredis bugs discard it so the callback is never called.
+         * For us this doesn't matter as we only want to send something to trigger errors on the socket if so */
+        redisAsyncCommand((redisAsyncContext *) c, onMessage, c->data, "PING");
+    }, 10000, 10000);
 
     /* Connect to Redis, this will automatically keep reconnecting once disconnected */
     connectToRedis(&app);
