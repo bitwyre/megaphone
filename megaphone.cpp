@@ -175,7 +175,8 @@ int main() {
         if (++missingPongs == 2) {
             /* If we did not get a pong in time, disconnect */
             printf("We did not get pong in time, assuming disconnected\n");
-            redisAsyncDisconnect(c);
+            redisAsyncFree(c);
+            return;
         }
 
         /* This is a hack to get hiredis to report pongs under the psubscribe callback */
