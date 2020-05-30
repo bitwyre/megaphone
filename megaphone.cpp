@@ -15,6 +15,7 @@
 /* No need to do string comparison when we know the exact length of the different actions */
 const int MESSAGE_LENGTH = 7;
 const int SUBSCRIBE_LENGTH = 9;
+const int PSUBSCRIBE_LENGTH = 10;
 
 const char *redisHostname;
 int redisPort;
@@ -22,17 +23,18 @@ const char *redisTopic;
 
 /* We use this to ping Redis */
 uv_timer_t pingTimer;
+int missingPongs;
 
 void onMessage(redisAsyncContext *c, void *reply, void *privdata);
 
 /* Connect to Redis server, manages reconnect by calling itself when needed */
-redisAsyncContext *connectToRedis(uWS::App *app) {
+bool connectToRedis(uWS::App *app) {
     /* Connect to Redis, subscribe to topic */
     redisAsyncContext *c = redisAsyncConnect(redisHostname, redisPort);
     /* Failing here is typically failure to allocate resources or probably DNS resolution */
     if (c->err) {
-        printf("Error redisAsyncConnect: %s\n", c->errstr);
-        return nullptr;
+        printf("Failed to allocate connection: %s\n", c->errstr);
+        return false;
     }
 
     /* User data is the app */
@@ -54,44 +56,34 @@ redisAsyncContext *connectToRedis(uWS::App *app) {
         /* Once connected, subscribe to our topic */
         std::string subscribeCommand = "SUBSCRIBE " + std::string(redisTopic);
         redisAsyncCommand((redisAsyncContext *) c, onMessage, c->data, subscribeCommand.c_str());
+
+        /* This is a hack to workaround bugs in hiredis, see issue #351 */
+        redisAsyncCommand((redisAsyncContext *) c, onMessage, c->data, "PSUBSCRIBE hello");
     });
 
     redisAsyncSetDisconnectCallback(c, [](const redisAsyncContext *c, int status) {
+        printf("Reconnecting to Redis\n");
+
         /* We are no longer connected to Redis, so stop pinging it */
         pingTimer.data = nullptr;
-
-        if (status != REDIS_OK) {
-            printf("Lost connection to Redis: %s\n", c->errstr);
-
-            /* We retry connecting immediately */
-            connectToRedis((uWS::App *) c->data);
-
-            /* Again, in this case redisAsyncContext is freed by hiredis */
-            return;
-        }
-
-        /* Here we need to free the redisAsyncContext */
-        printf("Redis disconnected cleanly\n");
+        missingPongs = 0;
 
         /* We retry connecting immediately */
         connectToRedis((uWS::App *) c->data);
 
-        redisAsyncFree((redisAsyncContext *) c);
+        /* Old context is always freed on return from here */
     });
 
-    /* We never use this actually, no need to return */
-    return c;
+    return true;
 }
 
 /* Run once for every Redis message */
 void onMessage(redisAsyncContext *c, void *reply, void *privdata) {
     redisReply *r = (redisReply *) reply;
-    /* If we have no response then just return */
+    /* Reply is valid for the duration of this callback, yet NULL is passed if errors occurred */
     if (!reply) {
         return;
     }
-
-    /* PONG responses are discarded by hiredis even though they technically reach us */
 
     if (r->type == REDIS_REPLY_ARRAY) {
         /* We always expect action, topic, message */
@@ -106,12 +98,21 @@ void onMessage(redisAsyncContext *c, void *reply, void *privdata) {
                 /* Whatever we are sent from Redis, we distribute to our set of clients */
                 ((uWS::App *) privdata)->publish(topic, message, uWS::OpCode::TEXT, true);
             } else if (r->element[0]->len == SUBSCRIBE_LENGTH) {
+
+                /* We don't handle this any particular way */
+
                 /* This only means we are subscribed and connected to Redis, debug text should be removed */
                 printf("We are connected and subscribed to Redis now\n");
+
+            } else if (r->element[0]->len == PSUBSCRIBE_LENGTH) {
+                printf("We are psubscribed to pong now!\n");
 
                 /* Start a timer sending Pings to Redis */
                 pingTimer.data = c;
             }
+        } else if (r->elements == 2) {
+            /* We get {pong, hello} for every ping hello */
+            missingPongs = 0;
         }
     }
 }
@@ -166,13 +167,26 @@ int main() {
         /* We store currently connected Redis context in user data */
         redisAsyncContext *c = (redisAsyncContext *) t->data;
 
-        /* Redis does respond with a PONG but hiredis bugs discard it so the callback is never called.
-         * For us this doesn't matter as we only want to send something to trigger errors on the socket if so */
-        redisAsyncCommand((redisAsyncContext *) c, onMessage, c->data, "PING");
+        /* Do not send pings unless we are connected and subscribed to pongs */
+        if (!c) {
+            return;
+        }
+
+        if (++missingPongs == 2) {
+            /* If we did not get a pong in time, disconnect */
+            printf("We did not get pong in time, assuming disconnected\n");
+            redisAsyncDisconnect(c);
+        }
+
+        /* This is a hack to get hiredis to report pongs under the psubscribe callback */
+        redisAsyncCommand((redisAsyncContext *) c, onMessage, c->data, "PING hello");
     }, 10000, 10000);
 
     /* Connect to Redis, this will automatically keep reconnecting once disconnected */
-    connectToRedis(&app);
+    if (!connectToRedis(&app)) {
+        /* If we failed to even allocate connection resources just exit the process */
+        return -1;
+    }
 
     /* We don't need any per socket data */
     struct PerSocketData {
