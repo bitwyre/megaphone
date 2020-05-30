@@ -153,6 +153,10 @@ int main() {
         path = "/*";
     }
 
+    /* Default ping interval is 10s */
+    char *redisPingIntervalString = getenv("REDIS_PING_INTERVAL");
+    int redisPingInterval = redisPingIntervalString ? atoi(redisPingIntervalString) : 10;
+
     /* Create libuv loop */
     signal(SIGPIPE, SIG_IGN);
 
@@ -181,7 +185,7 @@ int main() {
 
         /* This is a hack to get hiredis to report pongs under the psubscribe callback */
         redisAsyncCommand((redisAsyncContext *) c, onMessage, c->data, "PING hello");
-    }, 10000, 10000);
+    }, redisPingInterval * 1000, redisPingInterval * 1000);
 
     /* Connect to Redis, this will automatically keep reconnecting once disconnected */
     if (!connectToRedis(&app)) {
