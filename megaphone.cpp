@@ -8,6 +8,8 @@
 
 #include "App.h"
 
+#include <chrono>
+
 /* We use libuv to share the same event loop across hiredis and uSockets */
 /* It could also be possible to use uSockets own event loop, but libuv works fine */
 #include <uv.h>
@@ -24,6 +26,7 @@ const char *redisTopic;
 /* We use this to ping Redis */
 uv_timer_t pingTimer;
 int missingPongs;
+uint64_t lastPong;
 
 void onMessage(redisAsyncContext *c, void *reply, void *privdata);
 
@@ -113,6 +116,9 @@ void onMessage(redisAsyncContext *c, void *reply, void *privdata) {
         } else if (r->elements == 2) {
             /* We get {pong, hello} for every ping hello */
             missingPongs = 0;
+
+            /* Update last seen Redis pong */
+            lastPong = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
         }
     }
 }
@@ -216,7 +222,15 @@ int main() {
         .open = [](auto *ws, auto *req) {
             /* It matters what we subscribe to */
             ws->subscribe(redisTopic);
-        }
+        },
+        .message = nullptr,
+        .drain = nullptr,
+        /* Respond with last pong from Redis on websocket pings */
+        .ping = [](auto *ws) {
+            ws->send({(char *) &lastPong, 8}, uWS::OpCode::BINARY);
+        },
+        .pong = nullptr,
+        .close = nullptr
     }).listen(hostname, port, [port, hostname](auto *listenSocket) {
         if (listenSocket) {
             std::cout << "Accepting WebSockets on port " << port << ", hostname " << hostname << std::endl;
