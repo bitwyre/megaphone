@@ -219,7 +219,7 @@ int main() {
         /* 100kb then you're skipped until either cut or up to date */
         .maxBackpressure = 100 * 1024,
         /* Handlers */
-        .open = [](auto *ws, auto *req) {
+        .open = [](auto *ws) {
             /* It matters what we subscribe to */
             ws->subscribe(redisTopic);
         },
