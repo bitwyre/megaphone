@@ -9,6 +9,7 @@
 #include "App.h"
 
 #include <chrono>
+#include <unordered_set>
 
 /* We use libuv to share the same event loop across hiredis and uSockets */
 /* It could also be possible to use uSockets own event loop, but libuv works fine */
@@ -27,6 +28,9 @@ const char *redisTopic;
 uv_timer_t pingTimer;
 int missingPongs;
 uint64_t lastPong;
+
+/* Set of valid topics */
+std::unordered_set<std::string_view> validTopics;
 
 void onMessage(redisAsyncContext *c, void *reply, void *privdata);
 
@@ -56,7 +60,7 @@ bool connectToRedis(uWS::App *app) {
             return;
         }
 
-        /* Once connected, subscribe to our topic */
+        /* Once connected, subscribe to our topic(s) */
         std::string subscribeCommand = "SUBSCRIBE " + std::string(redisTopic);
         redisAsyncCommand((redisAsyncContext *) c, onMessage, c->data, subscribeCommand.c_str());
 
@@ -102,6 +106,8 @@ void onMessage(redisAsyncContext *c, void *reply, void *privdata) {
                 ((uWS::App *) privdata)->publish(topic, message, uWS::OpCode::TEXT, true);
             } else if (r->element[0]->len == SUBSCRIBE_LENGTH) {
 
+                /* We end up here as many times as we have topics */
+
                 /* We don't handle this any particular way */
 
                 /* This only means we are subscribed and connected to Redis, debug text should be removed */
@@ -131,6 +137,21 @@ int main() {
     if (!redisTopic) {
         printf("Error: REDIS_TOPIC environment variable not set\n");
         return -1;
+    }
+
+    /* Put all allowed topics in a hash for quick validation */
+    std::string_view validRedisTopics(redisTopic);
+    while (validRedisTopics.length()) {
+        auto end = validRedisTopics.find(" ");
+        std::string_view topic = validRedisTopics.substr(0, end);
+
+        std::cout << "Using <" << topic << "> as valid topic" << std::endl;
+
+        validTopics.insert(topic);
+        if (end == std::string_view::npos) {
+            break;
+        }
+        validRedisTopics.remove_prefix(end + 1);
     }
 
     /* Default Redis port is 6379 */
@@ -169,6 +190,9 @@ int main() {
     /* Hook up uWS with external libuv loop */
     uWS::Loop::get(uv_default_loop());
     uWS::App app;
+
+    /* Temporary variable for holding comma separated subscribe list */
+    thread_local std::string_view globalTopicsList;
 
     /* Start a timer sending pings to Redis every 10 seconds */
     uv_timer_init(uv_default_loop(), &pingTimer);
@@ -219,9 +243,37 @@ int main() {
         /* 100kb then you're skipped until either cut or up to date */
         .maxBackpressure = 100 * 1024,
         /* Handlers */
-        .open = [](auto *ws, auto *req) {
-            /* It matters what we subscribe to */
-            ws->subscribe(redisTopic);
+        .upgrade = [](auto *res, auto *req, auto *context) {
+            /* Upgrading below is immediate, so we can store topics in a global pointer */
+            globalTopicsList = req->getQuery("subscribe");
+
+            /* This will immediately emit open event, so we can use globalTopicsList in there */
+            res->template upgrade<PerSocketData>({
+                /* We initialize PerSocketData struct here */
+            }, req->getHeader("sec-websocket-key"),
+                req->getHeader("sec-websocket-protocol"),
+                req->getHeader("sec-websocket-extensions"),
+                context);
+        },
+        .open = [](auto *ws/*, auto *req*/) {
+            /* For all topics we specified, subscribe */
+            while (globalTopicsList.length()) {
+                auto end = globalTopicsList.find(",");
+                std::string_view topic = globalTopicsList.substr(0, end);
+
+                /* Is this even a valid topic? Ignore all topics that mismatches.
+                 * It could possibly close the connection otherwise */
+                if (validTopics.count(topic)) {
+                    ws->subscribe(topic);
+                } else {
+                    /* Should we close here? */
+                }
+
+                if (end == std::string_view::npos) {
+                    break;
+                }
+                globalTopicsList.remove_prefix(end + 1);
+            }
         },
         .message = nullptr,
         .drain = nullptr,
