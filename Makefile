@@ -10,3 +10,6 @@ deps:
 	CFLAGS="-I ../../libuv/include" WITH_LIBUV=1 make -C uWebSockets/uSockets
 	# Build hiredis static libs
 	make -C hiredis
+
+clean:
+	rm -rf megaphone megaphone.o && echo "megaphone cleaned"
