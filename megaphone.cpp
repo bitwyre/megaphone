@@ -239,7 +239,7 @@ int main() {
         /* We expect clients to ping us from time to time */
         /* Or we ping them, I don't know yet */
         /* TODO make it an env var */
-        .idleTimeout = 600,
+        .idleTimeout = 6000,
 
         /* 100kb then you're skipped until either cut or up to date */
         /* TODO make it an env var */
