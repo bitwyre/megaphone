@@ -1,5 +1,5 @@
 default:
-	g++ -O3 -flto -c -std=c++17 -I hiredis -I libuv/include -I uWebSockets/src -I uWebSockets/uSockets/src megaphone.cpp
+	g++ -O3 -flto -c -std=c++17 -I hiredis -I libuv/include -I rapidjson/include/rapidjson -I uWebSockets/src -I uWebSockets/uSockets/src megaphone.cpp
 	# Link with our libuv and hiredis static libs (built in deps)
 	g++ -O3 -flto -pthread -Wl,--no-as-needed -ldl megaphone.o hiredis/libhiredis.a libuv/.libs/libuv.a uWebSockets/uSockets/uSockets.a -lz -o megaphone
 

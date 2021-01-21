@@ -24,6 +24,16 @@ const char *redisHostname;
 int redisPort;
 const char *redisTopic;
 
+/* Init zero-allocation rapidjson parsing */
+#include "rapidjson.h"
+#include "document.h"
+using namespace rapidjson;
+typedef GenericDocument<UTF8<>, MemoryPoolAllocator<>, MemoryPoolAllocator<>> DocumentType;
+char valueBuffer[4096];
+char parseBuffer[1024];
+MemoryPoolAllocator<> valueAllocator(valueBuffer, sizeof(valueBuffer));
+MemoryPoolAllocator<> parseAllocator(parseBuffer, sizeof(parseBuffer));
+
 /* We use this to ping Redis */
 uv_timer_t pingTimer;
 int missingPongs;
@@ -233,8 +243,8 @@ int main() {
         /* Shared compressor */
         .compression = uWS::SHARED_COMPRESSOR,
 
-        /* We don't expect any messages, we are a megaphone */
-        .maxPayloadLength = 0,
+        /* We only expect small messages (subscribe, unsubscribe) */
+        .maxPayloadLength = 1024,
 
         /* We expect clients to ping us from time to time */
         /* Or we ping them, I don't know yet */
@@ -257,7 +267,7 @@ int main() {
                 req->getHeader("sec-websocket-extensions"),
                 context);
         },
-        .open = [](auto *ws/*, auto *req*/) {
+        .open = [](auto *ws) {
             /* For all topics we specified, subscribe */
             while (globalTopicsList.length()) {
                 auto end = globalTopicsList.find(",");
@@ -277,7 +287,49 @@ int main() {
                 globalTopicsList.remove_prefix(end + 1);
             }
         },
-        .message = nullptr,
+        .message = [](auto *ws, std::string_view message, uWS::OpCode opCode) {
+            /* Parse JSON here and subscribe, unsubscribe */
+            /* Example input: {"op": "subscribe", "args": ["orderBookL2_25:XBTUSD"]} */
+
+            /* These documents are pre-allocated */
+            DocumentType d(&valueAllocator, sizeof(parseBuffer), &parseAllocator);
+            ParseResult ok = d.Parse(message.data(), message.length());
+
+            if (!ok || !d.IsObject()) {
+                /* Not the json we want */
+                return;
+            }
+
+            /* First we get subscribe or unsubscribe */
+            Value::ConstMemberIterator opItr = d.FindMember("op");
+            if (opItr == d.MemberEnd() || !opItr->value.IsString()) {
+                return;
+            } else {
+                std::string_view op(opItr->value.GetString(), opItr->value.GetStringLength());
+
+                /* We have an op, so get a ref to the args array before we begin */
+                Value::ConstMemberIterator argsItr = d.FindMember("args");
+                if (argsItr == d.MemberEnd() || !argsItr->value.IsArray()) {
+                    return;
+                }
+
+                if (op == "subscribe") {
+                    for (auto &m : argsItr->value.GetArray()) {
+                        /* Is this a valid topic that we allow? */
+                        if (m.IsString() && validTopics.count(m.GetString())) {
+                            ws->subscribe(m.GetString());
+                        }
+                    }
+                } else if (op == "unsubscribe") {
+                    for (auto &m : argsItr->value.GetArray()) {
+                        /* Is this a valid topic that we allow? */
+                        if (m.IsString() && validTopics.count(m.GetString())) {
+                            ws->unsubscribe(m.GetString());
+                        }
+                    }
+                }
+            }
+        },
         .drain = nullptr,
         /* Respond with last pong from Redis on websocket pings */
         .ping = [](auto *ws) {
