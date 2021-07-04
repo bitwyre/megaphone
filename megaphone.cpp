@@ -332,7 +332,7 @@ int main() {
         },
         .drain = nullptr,
         /* Respond with last pong from Redis on websocket pings */
-        .ping = [](auto *ws) {
+        .ping = [](auto *ws, std::string_view message) {
             ws->send({(char *) &lastPong, 8}, uWS::OpCode::BINARY);
         },
         .pong = nullptr,
