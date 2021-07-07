@@ -1,6 +1,6 @@
 # Stage 1 - Build
 
-FROM ubuntu:18.04 as gcc-builder
+FROM ubuntu:latest as gcc-builder
 
 RUN apt-get update && \
     apt-get upgrade -y && \
@@ -14,7 +14,7 @@ RUN make deps -C megaphone && \
 
 # Stage 2 - Production Image
 
-FROM ubuntu:18.04
+FROM ubuntu:latest
 
 LABEL maintainer="Aditya Kresna (kresna@bitwyre.com), Yefta Sutanto (yefta@bitwyre.com)"
 
