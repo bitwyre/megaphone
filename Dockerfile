@@ -1,6 +1,6 @@
 # Stage 1 - Build
 
-FROM ubuntu:latest as gcc-builder
+FROM ubuntu:20.04 as gcc-builder
 
 RUN apt-get update && \
     apt-get upgrade -y && \
@@ -14,10 +14,11 @@ RUN make deps -C megaphone && \
 
 # Stage 2 - Production Image
 
-FROM ubuntu:latest
+FROM ubuntu:20.04 
 
 LABEL maintainer="Aditya Kresna (kresna@bitwyre.com), Yefta Sutanto (yefta@bitwyre.com)"
 
 COPY --from=gcc-builder /app/megaphone/megaphone /usr/bin/
+RUN echo ". /vault/secrets/config" > /root/.bashrc
 
 ENTRYPOINT ["megaphone"]
