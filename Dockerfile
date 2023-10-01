@@ -7,7 +7,8 @@ RUN apt-get update && \
     apt-get install -y build-essential automake autoconf autotools-dev make libtool zlib1g-dev && \
     apt-get clean
 
-COPY . /app/megaphone
+COPY shared/megaphone/ /app/megaphone
+
 WORKDIR /app
 RUN make deps -C megaphone && \
     make -C megaphone
@@ -16,9 +17,9 @@ RUN make deps -C megaphone && \
 
 FROM ubuntu:20.04 
 
-LABEL maintainer="Aditya Kresna (kresna@bitwyre.com), Yefta Sutanto (yefta@bitwyre.com)"
-
 COPY --from=gcc-builder /app/megaphone/megaphone /usr/bin/
-RUN echo ". /vault/secrets/config" > /root/.bashrc
+COPY --from=gcc-builder /app/megaphone/entrypoint.sh /usr/bin/entrypoint.sh
 
-ENTRYPOINT ["megaphone"]
+RUN chmod +x /usr/bin/megaphone /usr/bin/entrypoint.sh
+
+ENTRYPOINT ["entrypoint.sh"]
