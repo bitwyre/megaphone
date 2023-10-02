@@ -10,7 +10,6 @@ megaphone
 *.d
 
 # Object files
-*.o
 *.ko
 *.obj
 *.elf
