@@ -468,50 +468,63 @@ int main() {
             StringBuffer s;
             Writer<StringBuffer> writer{s};
 
+            writer.StartObject();
+            writer.Key("table");
+            writer.String("depthL2");
+            writer.Key("action");
+            writer.String("snapshot");
+            writer.Key("data");
+            writer.StartObject();            
+            writer.Key("instrument");
+            std::string instrument = kS(kK(columnValues)[4])[0]; // instrument : symbol
+            writer.String(instrument.c_str());
+            writer.Key("sequence");
+            writer.Uint(kJ(kK(columnValues)[6])[0]);
+            writer.Key("is_frozen");
+            writer.Bool(false);
+            writer.Key("bids");
+            writer.StartArray();
+            // bids
             for(int i= 0; i < kK(columnValues)[0]->n; i++) {
+                bool is_bid = kG(kK(columnValues)[3])[i]; // is_bid : bool
                 std::string price = kS(kK(columnValues)[1])[i]; // price : symbol
                 std::string qty = kS(kK(columnValues)[2])[i]; // qty : symbol
-                bool is_bid = kG(kK(columnValues)[3])[i]; // is_bid : bool
                 std::string instrument = kS(kK(columnValues)[4])[i]; // instrument : symbol
                 std::string value = kS(kK(columnValues)[5])[i]; // values : symbol
                 long sequence = kJ(kK(columnValues)[6])[i]; // sequence : long
                 long timestamp = kJ(kK(columnValues)[7])[i]; // timestamp : long
-
-                writer.StartObject();
-                writer.Key("table");
-                writer.String("depthL2");
-                
-                writer.Key("action");
-                writer.String("snapshot");
-                
-                writer.Key("data");
-
-                writer.StartObject();
-                    writer.Key("qty");
+                if(is_bid) {
+                    writer.StartArray();
+                    writer.String(price.c_str());
                     writer.String(qty.c_str());
-                
-                    writer.Key("instrument");
-                    writer.String(instrument.c_str());
-
-                    writer.Key("sequence");
-                    writer.Uint(sequence);
-                    
-                    writer.Key("value");
-                    writer.String(value.c_str());
-
-                    writer.Key("value");
-                    writer.String(value.c_str());
-                                    
-                    writer.Key("side");
-                    writer.Uint(is_bid);
-                                    
-                    writer.Key("timestamp");
-                    writer.Uint(timestamp);
-                writer.EndObject();
-                auto depthl2json = s.GetString();
-                wsQueue.push(Payload{.topic_="", .data_=depthl2json});
-                s.Clear();
+                    writer.EndArray();
+                }
             }
+            writer.EndArray();
+            writer.Key("asks");
+            writer.StartArray();
+            // asks
+            for(int i= 0; i < kK(columnValues)[0]->n; i++) {
+                bool is_bid = kG(kK(columnValues)[3])[i]; // is_bid : bool
+                std::string price = kS(kK(columnValues)[1])[i]; // price : symbol
+                std::string qty = kS(kK(columnValues)[2])[i]; // qty : symbol
+                std::string instrument = kS(kK(columnValues)[4])[i]; // instrument : symbol
+                std::string value = kS(kK(columnValues)[5])[i]; // values : symbol
+                long sequence = kJ(kK(columnValues)[6])[i]; // sequence : long
+                long timestamp = kJ(kK(columnValues)[7])[i]; // timestamp : long
+                if(!is_bid) {
+                    writer.StartArray();
+                    writer.String(price.c_str());
+                    writer.String(qty.c_str());
+                    writer.EndArray();
+                }
+            }
+            writer.EndArray();
+            writer.EndObject();
+            writer.EndObject();
+            auto depthl2json = s.GetString();
+            //wsQueue.push(Payload{.topic_="", .data_=depthl2json});
+            s.Clear();
         }
         r0(response);
     }
@@ -519,7 +532,6 @@ int main() {
     /* Hook up uWS with external libuv loop */
     uWS::Loop::get(uv_default_loop());
     uWS::App app;
-
     /* Define websocket route */
     app.ws<PerSocketData>(path, {
         /* Shared compressor */
@@ -627,3 +639,4 @@ int main() {
         }
     }).run();
 }
+
