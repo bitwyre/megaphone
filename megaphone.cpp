@@ -167,7 +167,12 @@ int main() {
     
     K response, table, columnNames, columnValues;
     K tradeTableName = ks("trades");
-    K depth_l2_table = ks("depth_l2");
+    K depth_l2_full = ks("L2_FULL");
+    K depth_l2_10 = ks("L2_10");
+    K depth_l2_25 = ks("L2_25");
+    K depth_l2_50 = ks("L2_50");
+    K depth_l2_100 = ks("L2_100");
+
     K depth_l3 = ks("depth_l3");
     K l3_events = ks("l3_events");
     K ticker = ks("ticker");
@@ -415,41 +420,35 @@ int main() {
             StringBuffer s;
             Writer<StringBuffer> writer(s);
 
+            writer.StartObject();
+            writer.Key("table");
+            writer.String("depthL2");
+            writer.Key("action");
+            writer.String("update");
+            writer.Key("data");
+            writer.StartObject();
+
             for(int i= 0; i < kK(columnValues)[0]->n; i++) {
                 std::string price = kS(kK(columnValues)[1])[i]; // price : symbol
                 std::string qty = kS(kK(columnValues)[2])[i]; // qty : symbol
                 bool is_bid = kG(kK(columnValues)[3])[i]; // is_bid : bool
                 std::string instrument = kS(kK(columnValues)[4])[i]; // instrument : symbol
                 long sequence = kJ(kK(columnValues)[5])[i]; // sequence : long
-                int timestamp = 0;
+                int timestamp = kJ(kK(columnValues)[6])[i]; // timestamp
 
-                writer.StartObject();
-                writer.Key("table");
-                writer.String("depthL2");
-                
-                writer.Key("action");
-                writer.String("update");
-
-                writer.Key("data");
-
-                writer.StartObject();
-                    writer.Key("instrument");
-                    writer.String(instrument.c_str());
-
-                    writer.Key("price");
-                    writer.String(price.c_str());
-
-                    writer.Key("qty");
-                    writer.String(qty.c_str());
-                    
-                    writer.Key("sequence");
-                    writer.Uint(sequence);
-
-                    writer.Key("side");
-                    writer.Uint(is_bid);
-
-                    writer.Key("timestamp");
-                    writer.Uint(timestamp);
+                writer.Key("instrument");
+                writer.String(instrument.c_str());
+                writer.Key("timestamp");
+                writer.Uint(timestamp);
+                writer.Key("sequence");
+                writer.Uint(sequence);
+                writer.Key("price");
+                writer.String(price.c_str());
+                writer.Key("side");
+                writer.Key("side");
+                writer.Uint(is_bid);
+                writer.Key("qty");
+                writer.String(qty.c_str());
 
                 writer.EndObject();
                 writer.EndObject();
@@ -460,7 +459,271 @@ int main() {
             }
         }
 
-        if(shapeOfdepthl2(response, depth_l2_table)) { 
+        if(shapeOfdepthl2(response, depth_l2_full)) { 
+            table= kK(response)[2]->k;
+            columnNames= kK(table)[0]; 
+            columnValues= kK(table)[1]; 
+
+            StringBuffer s;
+            Writer<StringBuffer> writer{s};
+
+            writer.StartObject();
+            writer.Key("table");
+            writer.String("depthL2");
+            writer.Key("action");
+            writer.String("snapshot");
+            writer.Key("data");
+            writer.StartObject();            
+            writer.Key("instrument");
+            std::string instrument = kS(kK(columnValues)[4])[0]; // instrument : symbol
+            writer.String(instrument.c_str());
+            writer.Key("sequence");
+            writer.Uint(kJ(kK(columnValues)[6])[0]);
+            writer.Key("is_frozen");
+            writer.Bool(false);
+            writer.Key("bids");
+            writer.StartArray();
+            // bids
+            for(int i= 0; i < kK(columnValues)[0]->n; i++) {
+                bool is_bid = kG(kK(columnValues)[3])[i]; // is_bid : bool
+                std::string price = kS(kK(columnValues)[1])[i]; // price : symbol
+                std::string qty = kS(kK(columnValues)[2])[i]; // qty : symbol
+                std::string instrument = kS(kK(columnValues)[4])[i]; // instrument : symbol
+                std::string value = kS(kK(columnValues)[5])[i]; // values : symbol
+                long sequence = kJ(kK(columnValues)[6])[i]; // sequence : long
+                long timestamp = kJ(kK(columnValues)[7])[i]; // timestamp : long
+                if(is_bid) {
+                    writer.StartArray();
+                    writer.String(price.c_str());
+                    writer.String(qty.c_str());
+                    writer.EndArray();
+                }
+            }
+            writer.EndArray();
+            writer.Key("asks");
+            writer.StartArray();
+            // asks
+            for(int i= 0; i < kK(columnValues)[0]->n; i++) {
+                bool is_bid = kG(kK(columnValues)[3])[i]; // is_bid : bool
+                std::string price = kS(kK(columnValues)[1])[i]; // price : symbol
+                std::string qty = kS(kK(columnValues)[2])[i]; // qty : symbol
+                std::string instrument = kS(kK(columnValues)[4])[i]; // instrument : symbol
+                std::string value = kS(kK(columnValues)[5])[i]; // values : symbol
+                long sequence = kJ(kK(columnValues)[6])[i]; // sequence : long
+                long timestamp = kJ(kK(columnValues)[7])[i]; // timestamp : long
+                if(!is_bid) {
+                    writer.StartArray();
+                    writer.String(price.c_str());
+                    writer.String(qty.c_str());
+                    writer.EndArray();
+                }
+            }
+            writer.EndArray();
+            writer.EndObject();
+            writer.EndObject();
+            auto depthl2json = s.GetString();
+            //wsQueue.push(Payload{.topic_="", .data_=depthl2json});
+            s.Clear();
+        }
+        if(shapeOfdepthl2(response, depth_l2_10)) { 
+            table= kK(response)[2]->k;
+            columnNames= kK(table)[0]; 
+            columnValues= kK(table)[1]; 
+
+            StringBuffer s;
+            Writer<StringBuffer> writer{s};
+
+            writer.StartObject();
+            writer.Key("table");
+            writer.String("depthL2");
+            writer.Key("action");
+            writer.String("snapshot");
+            writer.Key("data");
+            writer.StartObject();            
+            writer.Key("instrument");
+            std::string instrument = kS(kK(columnValues)[4])[0]; // instrument : symbol
+            writer.String(instrument.c_str());
+            writer.Key("sequence");
+            writer.Uint(kJ(kK(columnValues)[6])[0]);
+            writer.Key("is_frozen");
+            writer.Bool(false);
+            writer.Key("bids");
+            writer.StartArray();
+            // bids
+            for(int i= 0; i < kK(columnValues)[0]->n; i++) {
+                bool is_bid = kG(kK(columnValues)[3])[i]; // is_bid : bool
+                std::string price = kS(kK(columnValues)[1])[i]; // price : symbol
+                std::string qty = kS(kK(columnValues)[2])[i]; // qty : symbol
+                std::string instrument = kS(kK(columnValues)[4])[i]; // instrument : symbol
+                std::string value = kS(kK(columnValues)[5])[i]; // values : symbol
+                long sequence = kJ(kK(columnValues)[6])[i]; // sequence : long
+                long timestamp = kJ(kK(columnValues)[7])[i]; // timestamp : long
+                if(is_bid) {
+                    writer.StartArray();
+                    writer.String(price.c_str());
+                    writer.String(qty.c_str());
+                    writer.EndArray();
+                }
+            }
+            writer.EndArray();
+            writer.Key("asks");
+            writer.StartArray();
+            // asks
+            for(int i= 0; i < kK(columnValues)[0]->n; i++) {
+                bool is_bid = kG(kK(columnValues)[3])[i]; // is_bid : bool
+                std::string price = kS(kK(columnValues)[1])[i]; // price : symbol
+                std::string qty = kS(kK(columnValues)[2])[i]; // qty : symbol
+                std::string instrument = kS(kK(columnValues)[4])[i]; // instrument : symbol
+                std::string value = kS(kK(columnValues)[5])[i]; // values : symbol
+                long sequence = kJ(kK(columnValues)[6])[i]; // sequence : long
+                long timestamp = kJ(kK(columnValues)[7])[i]; // timestamp : long
+                if(!is_bid) {
+                    writer.StartArray();
+                    writer.String(price.c_str());
+                    writer.String(qty.c_str());
+                    writer.EndArray();
+                }
+            }
+            writer.EndArray();
+            writer.EndObject();
+            writer.EndObject();
+            auto depthl2json = s.GetString();
+            //wsQueue.push(Payload{.topic_="", .data_=depthl2json});
+            s.Clear();
+        }
+        if(shapeOfdepthl2(response, depth_l2_25)) { 
+            table= kK(response)[2]->k;
+            columnNames= kK(table)[0]; 
+            columnValues= kK(table)[1]; 
+
+            StringBuffer s;
+            Writer<StringBuffer> writer{s};
+
+            writer.StartObject();
+            writer.Key("table");
+            writer.String("depthL2");
+            writer.Key("action");
+            writer.String("snapshot");
+            writer.Key("data");
+            writer.StartObject();            
+            writer.Key("instrument");
+            std::string instrument = kS(kK(columnValues)[4])[0]; // instrument : symbol
+            writer.String(instrument.c_str());
+            writer.Key("sequence");
+            writer.Uint(kJ(kK(columnValues)[6])[0]);
+            writer.Key("is_frozen");
+            writer.Bool(false);
+            writer.Key("bids");
+            writer.StartArray();
+            // bids
+            for(int i= 0; i < kK(columnValues)[0]->n; i++) {
+                bool is_bid = kG(kK(columnValues)[3])[i]; // is_bid : bool
+                std::string price = kS(kK(columnValues)[1])[i]; // price : symbol
+                std::string qty = kS(kK(columnValues)[2])[i]; // qty : symbol
+                std::string instrument = kS(kK(columnValues)[4])[i]; // instrument : symbol
+                std::string value = kS(kK(columnValues)[5])[i]; // values : symbol
+                long sequence = kJ(kK(columnValues)[6])[i]; // sequence : long
+                long timestamp = kJ(kK(columnValues)[7])[i]; // timestamp : long
+                if(is_bid) {
+                    writer.StartArray();
+                    writer.String(price.c_str());
+                    writer.String(qty.c_str());
+                    writer.EndArray();
+                }
+            }
+            writer.EndArray();
+            writer.Key("asks");
+            writer.StartArray();
+            // asks
+            for(int i= 0; i < kK(columnValues)[0]->n; i++) {
+                bool is_bid = kG(kK(columnValues)[3])[i]; // is_bid : bool
+                std::string price = kS(kK(columnValues)[1])[i]; // price : symbol
+                std::string qty = kS(kK(columnValues)[2])[i]; // qty : symbol
+                std::string instrument = kS(kK(columnValues)[4])[i]; // instrument : symbol
+                std::string value = kS(kK(columnValues)[5])[i]; // values : symbol
+                long sequence = kJ(kK(columnValues)[6])[i]; // sequence : long
+                long timestamp = kJ(kK(columnValues)[7])[i]; // timestamp : long
+                if(!is_bid) {
+                    writer.StartArray();
+                    writer.String(price.c_str());
+                    writer.String(qty.c_str());
+                    writer.EndArray();
+                }
+            }
+            writer.EndArray();
+            writer.EndObject();
+            writer.EndObject();
+            auto depthl2json = s.GetString();
+            //wsQueue.push(Payload{.topic_="", .data_=depthl2json});
+            s.Clear();
+        }
+        if(shapeOfdepthl2(response, depth_l2_50)) { 
+            table= kK(response)[2]->k;
+            columnNames= kK(table)[0]; 
+            columnValues= kK(table)[1]; 
+
+            StringBuffer s;
+            Writer<StringBuffer> writer{s};
+
+            writer.StartObject();
+            writer.Key("table");
+            writer.String("depthL2");
+            writer.Key("action");
+            writer.String("snapshot");
+            writer.Key("data");
+            writer.StartObject();            
+            writer.Key("instrument");
+            std::string instrument = kS(kK(columnValues)[4])[0]; // instrument : symbol
+            writer.String(instrument.c_str());
+            writer.Key("sequence");
+            writer.Uint(kJ(kK(columnValues)[6])[0]);
+            writer.Key("is_frozen");
+            writer.Bool(false);
+            writer.Key("bids");
+            writer.StartArray();
+            // bids
+            for(int i= 0; i < kK(columnValues)[0]->n; i++) {
+                bool is_bid = kG(kK(columnValues)[3])[i]; // is_bid : bool
+                std::string price = kS(kK(columnValues)[1])[i]; // price : symbol
+                std::string qty = kS(kK(columnValues)[2])[i]; // qty : symbol
+                std::string instrument = kS(kK(columnValues)[4])[i]; // instrument : symbol
+                std::string value = kS(kK(columnValues)[5])[i]; // values : symbol
+                long sequence = kJ(kK(columnValues)[6])[i]; // sequence : long
+                long timestamp = kJ(kK(columnValues)[7])[i]; // timestamp : long
+                if(is_bid) {
+                    writer.StartArray();
+                    writer.String(price.c_str());
+                    writer.String(qty.c_str());
+                    writer.EndArray();
+                }
+            }
+            writer.EndArray();
+            writer.Key("asks");
+            writer.StartArray();
+            // asks
+            for(int i= 0; i < kK(columnValues)[0]->n; i++) {
+                bool is_bid = kG(kK(columnValues)[3])[i]; // is_bid : bool
+                std::string price = kS(kK(columnValues)[1])[i]; // price : symbol
+                std::string qty = kS(kK(columnValues)[2])[i]; // qty : symbol
+                std::string instrument = kS(kK(columnValues)[4])[i]; // instrument : symbol
+                std::string value = kS(kK(columnValues)[5])[i]; // values : symbol
+                long sequence = kJ(kK(columnValues)[6])[i]; // sequence : long
+                long timestamp = kJ(kK(columnValues)[7])[i]; // timestamp : long
+                if(!is_bid) {
+                    writer.StartArray();
+                    writer.String(price.c_str());
+                    writer.String(qty.c_str());
+                    writer.EndArray();
+                }
+            }
+            writer.EndArray();
+            writer.EndObject();
+            writer.EndObject();
+            auto depthl2json = s.GetString();
+            //wsQueue.push(Payload{.topic_="", .data_=depthl2json});
+            s.Clear();
+        }
+        if(shapeOfdepthl2(response, depth_l2_100)) { 
             table= kK(response)[2]->k;
             columnNames= kK(table)[0]; 
             columnValues= kK(table)[1]; 
