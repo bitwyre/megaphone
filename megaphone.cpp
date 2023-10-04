@@ -61,7 +61,7 @@ I shapeOfTrade(K x, K tableName) {
         return 0;
     // check that number of columns>=4 
     columns = kK(kK(x)[2]->k)[0];
-    if(columns->n != 6)
+    if(columns->n != 7)
         return 0;
     // you can add more checks here to ensure that types are as expected
     return 1;
@@ -76,7 +76,7 @@ I shapeOfl3Events(K x, K tableName) {
         return 0;
 
     columns= kK(kK(x)[2]->k)[0];
-    if(columns->n != 8)
+    if(columns->n != 9)
         return 0;
     // you can add more checks here to ensure that types are as expected
     return 1;
@@ -106,7 +106,7 @@ I shapeOfl2Events(K x, K tableName) {
         return 0;
     // check that number of columns>=4 
     columns= kK(kK(x)[2]->k)[0];
-    if(columns->n != 5)
+    if(columns->n != 6)
         return 0;
     // you can add more checks here to ensure that types are as expected
     return 1;
@@ -215,6 +215,7 @@ int main() {
     };
 
     std::string tradesTopic = "trades:";
+    std::string depthTopic = "depth:";
     while(1) {
         // subscribe to all tables from kdb+ tickerplant
         response= k(handle,  ".u.sub[`;`]", (K)0);
@@ -239,7 +240,6 @@ int main() {
                 std::string instrument = kS(kK(columnValues)[5])[i]; // instrument : symbol
                 long timestamp = kJ(kK(columnValues)[6])[i]; // timestamp : long
                 int volume = 10;
-                std::string id = "the-id-goes-here";
 
                 writer.StartObject();
                 writer.Key("table");
@@ -263,14 +263,10 @@ int main() {
 
                                     
                     writer.Key("values");
-                    writer.Uint(volume);
+                    writer.String(value.c_str());
                                     
                     writer.Key("side");
                     writer.Uint(is_bid);
-
-                                    
-                    writer.Key("id");
-                    writer.String(id.c_str());
                                     
                     writer.Key("timestamp");
                     writer.Uint(timestamp);
@@ -279,7 +275,7 @@ int main() {
                 writer.EndObject();
 
                 auto tradeJson = s.GetString();
-                wsQueue.push(Payload{.topic_=tradesTopic+=instrument, .data_=tradeJson});
+                // wsQueue.push(Payload{.topic_=tradesTopic+=instrument, .data_=tradeJson});
                 //((uWS::App *) privdata)->publish(topic, message, uWS::OpCode::TEXT, true);
                 s.Clear();
             }
@@ -309,7 +305,7 @@ int main() {
                 writer.String("depthL3");
 
                 writer.Key("action");
-                writer.String("insert");
+                writer.String("update");
 
                 writer.Key("data");
 
@@ -328,9 +324,9 @@ int main() {
                     writer.String(price.c_str());
 
                     writer.Key("qty");
-                    writer.String(instrument.c_str());
+                    writer.String(qty.c_str());
 
-                    writer.Key("type");
+                    writer.Key("order_type");
                     writer.Uint(type);
 
                     writer.Key("timestamp");
@@ -357,6 +353,20 @@ int main() {
             StringBuffer s;
             Writer<StringBuffer> writer(s);
 
+            writer.StartObject();
+            writer.Key("table");
+            writer.String("depthL3");
+            writer.Key("action");
+            writer.String("snapshot");
+            writer.Key("data");
+            writer.StartObject();
+            writer.Key("instrument");
+            std::string instrument = kS(kK(columnValues)[4])[0]; // instrument : symbol
+            writer.String(instrument.c_str());
+            writer.Key("sequence");
+            writer.Uint64(kJ(kK(columnValues)[6])[0]);
+            writer.Key("bids");
+            writer.StartArray();
             for(int i= 0; i < kK(columnValues)[0]->n; i++) {
                 std::string price = kS(kK(columnValues)[1])[i]; // price : symbol
                 std::string qty = kS(kK(columnValues)[2])[i]; // qty : symbol
@@ -367,59 +377,39 @@ int main() {
                 std::string order_id = kS(kK(columnValues)[7])[i]; // order id : symbol
                 long timestamp = kJ(kK(columnValues)[8])[i]; // timestamp : long
                 int order_type = 1;
-
-
-                writer.StartObject();
-                writer.Key("table");
-                auto tn = std::string("trades:").append(instrument);
-                writer.String(tn.c_str());
-
-                                writer.StartObject();
-                writer.Key("table");
-                writer.String("depthL3");
-
-                writer.Key("action");
-                writer.String("insert");
-
-                writer.Key("data");
-
-                writer.StartObject();
-                    writer.Key("instrument");
-                    writer.String(instrument.c_str());
-
-                    writer.Key("order_id");
-                    writer.String(order_id.c_str());
-
-
-                    writer.Key("side");
-                    writer.Uint(is_bid);
-
-                    writer.Key("price");
+                if(is_bid) {
+                    writer.StartArray();
                     writer.String(price.c_str());
-
-                    writer.Key("qty");
-                    writer.String(instrument.c_str());
-
-                    writer.Key("type");
-                    writer.Uint(order_type);
-
-                    writer.Key("timestamp");
-                    writer.Uint(timestamp);
-
-
-                    writer.Key("sequence");
-                    writer.Uint(sequence);
-
-                    writer.Key("values");
-                    writer.String(value.c_str());
-
-                    writer.EndObject();
-                    writer.EndObject();
-                
-                auto depthL3Json = s.GetString();
-                wsQueue.push(Payload{.topic_="", .data_=depthL3Json});
-                s.Clear();
+                    writer.String(qty.c_str());
+                    writer.EndArray();
+                }
             }
+            writer.EndArray();
+            writer.Key("asks");
+            writer.StartArray();
+            for(int i= 0; i < kK(columnValues)[0]->n; i++) {
+                std::string price = kS(kK(columnValues)[1])[i]; // price : symbol
+                std::string qty = kS(kK(columnValues)[2])[i]; // qty : symbol
+                bool is_bid = kG(kK(columnValues)[3])[i]; // is_bid : bool
+                std::string instrument = kS(kK(columnValues)[4])[i]; // instrument : symbol
+                std::string value = kS(kK(columnValues)[5])[i]; // values : symbol
+                long sequence = kJ(kK(columnValues)[6])[i]; // sequence : long
+                std::string order_id = kS(kK(columnValues)[7])[i]; // order id : symbol
+                long timestamp = kJ(kK(columnValues)[8])[i]; // timestamp : long
+                int order_type = 1;
+                if(!is_bid) {
+                    writer.StartArray();
+                    writer.String(price.c_str());
+                    writer.String(qty.c_str());
+                    writer.EndArray();
+                }
+            }
+            writer.EndArray();
+            writer.EndObject();
+            writer.EndObject();
+            auto depthL3Json = s.GetString();
+            wsQueue.push(Payload{.topic_="", .data_=depthL3Json});
+            s.Clear();
         }
 
         if(shapeOfl2Events(response, l2_events)) { 
