@@ -54,6 +54,8 @@ struct Payload{
 
 I shapeOfTrade(K x, K tableName) { 
     K columns;
+    if(x->t != 0 || x->n != 3)
+        return 0;
     // check that second element is a table name 
     if(kK(x)[1]->s != tableName->s)
         return 0;
@@ -67,8 +69,12 @@ I shapeOfTrade(K x, K tableName) {
 
 I shapeOfl3Events(K x, K tableName) { 
     K columns;
+    if(x->t != 0 || x->n != 3)
+        return 0;
+
     if(kK(x)[1]->s != tableName->s)
         return 0;
+
     columns= kK(kK(x)[2]->k)[0];
     if(columns->n != 8)
         return 0;
@@ -78,10 +84,11 @@ I shapeOfl3Events(K x, K tableName) {
 
 I shapeOfdepthl3(K x, K tableName) { 
     K columns;
+    if(x->t != 0 || x->n != 3)
+        return 0;
     // check the table name 
     if(kK(x)[1]->s != tableName->s)
         return 0;
-
     // check that number of columns>=4 
     columns= kK(kK(x)[2]->k)[0];
     if(columns->n != 8)
@@ -92,6 +99,8 @@ I shapeOfdepthl3(K x, K tableName) {
 
 I shapeOfl2Events(K x, K tableName) { 
     K columns;
+    if(x->t != 0 || x->n != 3)
+        return 0;
     // check the table name 
     if(kK(x)[1]->s != tableName->s)
         return 0;
@@ -105,6 +114,8 @@ I shapeOfl2Events(K x, K tableName) {
 
 I shapeOfdepthl2(K x, K tableName) { 
     K columns;
+    if(x->t != 0 || x->n != 3)
+        return 0;
     // check that second element is a table name 
     if(kK(x)[1]->s != tableName->s)
         return 0;
@@ -164,9 +175,8 @@ int main() {
         return EXIT_FAILURE; 
 
     std::cout << "kdb+ Succesfully connected" << std::endl;
-    
     K response, table, columnNames, columnValues;
-    K tradeTableName = ks("trades");
+    K tradeTableName = ks("trade");
     K depth_l2_full = ks("L2_FULL");
     K depth_l2_10 = ks("L2_10");
     K depth_l2_25 = ks("L2_25");
@@ -207,7 +217,7 @@ int main() {
     std::string tradesTopic = "trades:";
     while(1) {
         // subscribe to all tables from kdb+ tickerplant
-        response = k(handle, ".u.sub[`;`]", (K)0); 
+        response= k(handle,  ".u.sub[`;`]", (K)0);
         
         if(!response)
             break;
