@@ -121,7 +121,7 @@ I shapeOfdepthl2(K x, K tableName) {
         return 0;
     // check that number of columns>=4 
     columns= kK(kK(x)[2]->k)[0];
-    if(columns->n != 7)
+    if(columns->n != 8)
         return 0;
     // you can add more checks here to ensure that types are as expected
     return 1;
@@ -568,6 +568,7 @@ int main() {
                 std::string value = kS(kK(columnValues)[5])[i]; // values : symbol
                 long sequence = kJ(kK(columnValues)[6])[i]; // sequence : long
                 long timestamp = kJ(kK(columnValues)[7])[i]; // timestamp : long
+                std::cout << "instrument of level 10 : " << instrument << std::endl;
                 if(is_bid) {
                     writer.StartArray();
                     writer.String(price.c_str());
