@@ -275,6 +275,7 @@ int main() {
                 writer.EndObject();
 
                 auto tradeJson = s.GetString();
+                auto topic = std::string("trades:").append(instrument);
                 // wsQueue.push(Payload{.topic_=tradesTopic+=instrument, .data_=tradeJson});
                 //((uWS::App *) privdata)->publish(topic, message, uWS::OpCode::TEXT, true);
                 s.Clear();
@@ -408,7 +409,8 @@ int main() {
             writer.EndObject();
             writer.EndObject();
             auto depthL3Json = s.GetString();
-            wsQueue.push(Payload{.topic_="", .data_=depthL3Json});
+            auto topic = std::string("depthL3:").append(instrument);
+            //wsQueue.push(Payload{.topic_="", .data_=depthL3Json});
             s.Clear();
         }
 
@@ -454,7 +456,8 @@ int main() {
                 writer.EndObject();
 
                 auto l2Eventsjson = s.GetString();
-                wsQueue.push(Payload{.topic_="", .data_=l2Eventsjson});
+                auto topic = std::string("depthL2_10:").append(instrument);
+                //wsQueue.push(Payload{.topic_="", .data_=l2Eventsjson});
                 s.Clear();
             }
         }
@@ -522,6 +525,7 @@ int main() {
             writer.EndObject();
             writer.EndObject();
             auto depthl2json = s.GetString();
+            auto topic = std::string("depthL2:").append(instrument);
             //wsQueue.push(Payload{.topic_="", .data_=depthl2json});
             s.Clear();
         }
@@ -589,6 +593,7 @@ int main() {
             writer.EndObject();
             writer.EndObject();
             auto depthl2json = s.GetString();
+            auto topic = std::string("depthL2_10:").append(instrument);
             //wsQueue.push(Payload{.topic_="", .data_=depthl2json});
             s.Clear();
         }
@@ -655,6 +660,7 @@ int main() {
             writer.EndObject();
             writer.EndObject();
             auto depthl2json = s.GetString();
+            auto topic = std::string("depthL2_25:").append(instrument);
             //wsQueue.push(Payload{.topic_="", .data_=depthl2json});
             s.Clear();
         }
@@ -721,6 +727,7 @@ int main() {
             writer.EndObject();
             writer.EndObject();
             auto depthl2json = s.GetString();
+            auto topic = std::string("depthL2_50:").append(instrument);
             //wsQueue.push(Payload{.topic_="", .data_=depthl2json});
             s.Clear();
         }
@@ -787,6 +794,7 @@ int main() {
             writer.EndObject();
             writer.EndObject();
             auto depthl2json = s.GetString();
+            auto topic = std::string("depthL2_100:").append(instrument);
             //wsQueue.push(Payload{.topic_="", .data_=depthl2json});
             s.Clear();
         }
