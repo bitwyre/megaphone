@@ -806,7 +806,7 @@ int main() {
             global->publish(topic, depthL3Json, uWS::OpCode::TEXT, true);
             s.Clear();
         }
-        if(KdbShape(response, l2_events, 6)) { 
+        if(KdbShape(response, l2_events, 7)) { 
             std::cout << "Processing L2_EVENTS table " << "\n";
             table= kK(response)[2]->k;
             columnNames= kK(table)[0]; 
