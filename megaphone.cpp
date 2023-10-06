@@ -2,16 +2,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
-#include "hiredis/hiredis.h"
-#include "hiredis/async.h"
-#include "hiredis/adapters/libuv.h"
 
 #include "App.h"
-
+#include "k.h"
+#include "SPSCQueue.hpp"
 #include <chrono>
 #include <unordered_set>
 
-/* We use libuv to share the same event loop across hiredis and uSockets */
+/* We use libuv to share the same event loop across kdb and uSockets */
 /* It could also be possible to use uSockets own event loop, but libuv works fine */
 #include <uv.h>
 
@@ -20,13 +18,15 @@ const int MESSAGE_LENGTH = 7;
 const int SUBSCRIBE_LENGTH = 9;
 const int PSUBSCRIBE_LENGTH = 10;
 
-const char *redisHostname;
-int redisPort;
-const char *redisTopic;
+const char *Topics;
 
 /* Init zero-allocation rapidjson parsing */
 #include "rapidjson.h"
 #include "document.h"
+
+#include "writer.h"
+#include "stringbuffer.h"
+
 using namespace rapidjson;
 typedef GenericDocument<UTF8<>, MemoryPoolAllocator<>, MemoryPoolAllocator<>> DocumentType;
 char valueBuffer[4096];
@@ -34,126 +34,61 @@ char parseBuffer[1024];
 MemoryPoolAllocator<> valueAllocator(valueBuffer, sizeof(valueBuffer));
 MemoryPoolAllocator<> parseAllocator(parseBuffer, sizeof(parseBuffer));
 
-/* We use this to ping Redis */
-uv_timer_t pingTimer;
 int missingPongs;
 uint64_t lastPong;
+uWS::App* global;
 
 /* Set of valid topics */
 std::unordered_set<std::string_view> validTopics;
 
-void onMessage(redisAsyncContext *c, void *reply, void *privdata);
-
-/* Connect to Redis server, manages reconnect by calling itself when needed */
-bool connectToRedis(uWS::App *app) {
-    /* Connect to Redis, subscribe to topic */
-    redisAsyncContext *c = redisAsyncConnect(redisHostname, redisPort);
-    /* Failing here is typically failure to allocate resources or probably DNS resolution */
-    if (c->err) {
-        printf("Failed to allocate connection: %s\n", c->errstr);
-        return false;
-    }
-
-    /* User data is the app */
-    c->data = app;
-
-    redisLibuvAttach(c, uv_default_loop());
-    redisAsyncSetConnectCallback(c, [](const redisAsyncContext *c, int status) {
-        /* Failure here is async, such as refused connection or timeout */
-        if (status != REDIS_OK) {
-            printf("Failed connecting to Redis: %s\n", c->errstr);
-
-            /* We retry connecting immediately */
-            connectToRedis((uWS::App *) c->data);
-
-            /* redisAsyncContext is freed by hiredis in this case */
-            return;
-        }
-
-        /* Once connected, subscribe to our topic(s) */
-        std::string subscribeCommand = "SUBSCRIBE " + std::string(redisTopic);
-        redisAsyncCommand((redisAsyncContext *) c, onMessage, c->data, subscribeCommand.c_str());
-
-        /* This is a hack to workaround bugs in hiredis, see issue #351 */
-        redisAsyncCommand((redisAsyncContext *) c, onMessage, c->data, "PSUBSCRIBE hello");
-    });
-
-    redisAsyncSetDisconnectCallback(c, [](const redisAsyncContext *c, int status) {
-        printf("Reconnecting to Redis\n");
-
-        /* We are no longer connected to Redis, so stop pinging it */
-        pingTimer.data = nullptr;
-        missingPongs = 0;
-
-        /* We retry connecting immediately */
-        connectToRedis((uWS::App *) c->data);
-
-        /* Old context is always freed on return from here */
-    });
-
-    return true;
+/* Checks if its the right kdb table */
+I KdbShape(K x, K tableName, int columnCount) { 
+    K columns;
+    if(x->t != 0 || x->n != 3)
+        return 0;
+    // check the table name 
+    if(kK(x)[1]->s != tableName->s)
+        return 0;
+    // check that number of columns>=4 
+    columns= kK(kK(x)[2]->k)[0];
+    if(columns->n != columnCount)
+        return 0;
+    // you can add more checks here to ensure that types are as expected
+    return 1;
 }
 
-/* Run once for every Redis message */
-void onMessage(redisAsyncContext *c, void *reply, void *privdata) {
-    redisReply *r = (redisReply *) reply;
-    /* Reply is valid for the duration of this callback, yet NULL is passed if errors occurred */
-    if (!reply) {
-        return;
-    }
-
-    if (r->type == REDIS_REPLY_ARRAY) {
-        /* We always expect action, topic, message */
-        if (r->elements == 3) {
-            if (r->element[0]->len == MESSAGE_LENGTH) {
-                std::string_view topic(r->element[1]->str, r->element[1]->len);
-                std::string_view message(r->element[2]->str, r->element[2]->len);
-
-                /* Debug text for now, should be removed with time */
-                std::cout << "Topic: " << topic << " published: " << message << std::endl;
-
-                /* Whatever we are sent from Redis, we distribute to our set of clients */
-                ((uWS::App *) privdata)->publish(topic, message, uWS::OpCode::TEXT, true);
-            } else if (r->element[0]->len == SUBSCRIBE_LENGTH) {
-
-                /* We end up here as many times as we have topics */
-
-                /* We don't handle this any particular way */
-
-                /* This only means we are subscribed and connected to Redis, debug text should be removed */
-                printf("We are connected and subscribed to Redis now\n");
-
-            } else if (r->element[0]->len == PSUBSCRIBE_LENGTH) {
-                printf("We are psubscribed to pong now!\n");
-
-                /* Start a timer sending Pings to Redis */
-                pingTimer.data = c;
-            }
-        } else if (r->elements == 2) {
-            /* We get {pong, hello} for every ping hello */
-            missingPongs = 0;
-
-            /* Update last seen Redis pong */
-            lastPong = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-        }
-    }
+I handleOk(I handle) {
+    if (handle > 0)
+        return 1;
+    if (handle == 0) {
+        std::cout << "[kdb+] Authentication error : {}" << handle << std::endl;
+    } else if(handle == -1) {
+        std::cout << "[kdb+] Connection error : {}" << handle << std::endl;
+    } else if(handle == -2) {
+        std::cout << "[kdb+] Timeout error : {}" << handle << std::endl;
+    } 
+    return handle;
 }
+
+
+/* data to share in event loop */
+struct MetaData {
+    int handle; // kdb connection
+};
 
 int main() {
-    /* Read some environment variables */
-
-    /* REDIS_TOPIC is the only required environment variable */
-    redisTopic = getenv("REDIS_TOPIC");
-    if (!redisTopic) {
-        printf("Error: REDIS_TOPIC environment variable not set\n");
+    /* TOPICS is the only required environment variable */
+    Topics = getenv("TOPICS");
+    if (!Topics) {
+        printf("Error: WS TOPICS environment variable not set\n");
         return -1;
     }
 
     /* Put all allowed topics in a hash for quick validation */
-    std::string_view validRedisTopics(redisTopic);
-    while (validRedisTopics.length()) {
-        auto end = validRedisTopics.find(" ");
-        std::string_view topic = validRedisTopics.substr(0, end);
+    std::string_view validTopicsWs(Topics);
+    while (validTopicsWs.length()) {
+        auto end = validTopicsWs.find(" ");
+        std::string_view topic = validTopicsWs.substr(0, end);
 
         std::cout << "Using <" << topic << "> as valid topic" << std::endl;
 
@@ -161,22 +96,23 @@ int main() {
         if (end == std::string_view::npos) {
             break;
         }
-        validRedisTopics.remove_prefix(end + 1);
+        validTopicsWs.remove_prefix(end + 1);
     }
 
-    /* Default Redis port is 6379 */
-    char *redisPortString = getenv("REDIS_PORT");
-    redisPort = redisPortString ? atoi(redisPortString) : 6379;
+    /* Read some KDB environment variables */
+    const char *kdbHost = getenv("KDB_HOST");
+    std::string hostStr(kdbHost);
+    int kdbPort = atoi(getenv("KDB_PORT"));
 
-    /* Default Redis hostname is 127.0.0.1 */
-    redisHostname = getenv("REDIS_HOST");
-    if (!redisHostname) {
-        redisHostname = "127.0.0.1";
-    }
+    I handle= khpu(hostStr.data(), kdbPort, "kdb:pass");
+    if(!handleOk(handle))
+        return EXIT_FAILURE; 
+    else
+        std::cout << "KDB succesfully Connected" << "\n";
 
     /* Default port is 4001 */
     char *portString = getenv("SERVICE_PORT");
-    int port = portString ? atoi(portString) : 4001;
+    int port = portString ? atoi(portString) : 40010;
 
     /* Default hostname is 0.0.0.0 */
     const char *hostname = getenv("SERVICE_IP");
@@ -189,55 +125,20 @@ int main() {
     if (!path) {
         path = "/*";
     }
-
-    /* Default ping interval is 10s */
-    char *redisPingIntervalString = getenv("REDIS_PING_INTERVAL");
-    int redisPingInterval = redisPingIntervalString ? atoi(redisPingIntervalString) : 10;
-
     /* Create libuv loop */
     signal(SIGPIPE, SIG_IGN);
 
-    /* Hook up uWS with external libuv loop */
-    uWS::Loop::get(uv_default_loop());
-    uWS::App app;
-
     /* Temporary variable for holding comma separated subscribe list */
     thread_local std::string_view globalTopicsList;
-
-    /* Start a timer sending pings to Redis every 10 seconds */
-    uv_timer_init(uv_default_loop(), &pingTimer);
-    pingTimer.data = nullptr;
-    uv_timer_start(&pingTimer, [](uv_timer_t *t) {
-        /* We store currently connected Redis context in user data */
-        redisAsyncContext *c = (redisAsyncContext *) t->data;
-
-        /* Do not send pings unless we are connected and subscribed to pongs */
-        if (!c) {
-            return;
-        }
-
-        if (++missingPongs == 2) {
-            /* If we did not get a pong in time, disconnect */
-            printf("We did not get pong in time, assuming disconnected\n");
-            redisAsyncFree(c);
-            return;
-        }
-
-        /* This is a hack to get hiredis to report pongs under the psubscribe callback */
-        redisAsyncCommand((redisAsyncContext *) c, onMessage, c->data, "PING hello");
-    }, redisPingInterval * 1000, redisPingInterval * 1000);
-
-    /* Connect to Redis, this will automatically keep reconnecting once disconnected */
-    if (!connectToRedis(&app)) {
-        /* If we failed to even allocate connection resources just exit the process */
-        return -1;
-    }
 
     /* We don't need any per socket data */
     struct PerSocketData {
 
     };
 
+    /* Hook up uWS with external libuv loop */
+    uWS::Loop::get(uv_default_loop());
+    uWS::App app;
     /* Define websocket route */
     app.ws<PerSocketData>(path, {
         /* Shared compressor */
@@ -343,5 +244,620 @@ int main() {
         } else {
             std::cout << "Error: Failed to listen to port " << port << std::endl;
         }
-    }).run();
+    });
+
+    auto meta = MetaData{.handle=handle};
+    uv_idle_t idler{.data = &meta};
+    uv_idle_init(uv_default_loop(), &idler);
+    uv_idle_start(&idler, [](uv_idle_t* handle) {
+        
+        const auto &obj = (MetaData*)handle->data;
+
+        K response, table, columnNames, columnValues;
+        K tradeTableName = ks("trade");
+        K depth_l2_full = ks("L2_FULL");
+        K depth_l2_10 = ks("L2_10");
+        K depth_l2_25 = ks("L2_25");
+        K depth_l2_50 = ks("L2_50");
+        K depth_l2_100 = ks("L2_100");
+        K depth_l3 = ks("depth_l3");
+        K l3_events = ks("l3_events");
+        K ticker = ks("ticker");
+        K l2_events = ks("l2_events");
+
+        response = k(obj->handle,  ".u.sub[`;`]", (K)0);
+        
+        if(!response)
+            return;
+
+        if(KdbShape(response, depth_l2_10, 8)) { 
+            std::cout << "Processing depth_l2_10 table " << "\n";
+            table= kK(response)[2]->k;
+            columnNames= kK(table)[0]; 
+            columnValues= kK(table)[1]; 
+
+            StringBuffer s;
+            Writer<StringBuffer> writer{s};
+
+            writer.StartObject();
+            writer.Key("table");
+            writer.String("depthL2");
+            writer.Key("action");
+            writer.String("snapshot");
+            writer.Key("data");
+            writer.StartObject();            
+            writer.Key("instrument");
+            std::string instrument = kS(kK(columnValues)[4])[0]; // instrument : symbol
+            writer.String(instrument.c_str());
+            writer.Key("sequence");
+            writer.Uint(kJ(kK(columnValues)[6])[0]);
+            writer.Key("is_frozen");
+            writer.Bool(false);
+            writer.Key("bids");
+            writer.StartArray();
+            // bids
+            for(int i= 0; i < kK(columnValues)[0]->n; i++) {
+                bool is_bid = kG(kK(columnValues)[3])[i]; // is_bid : bool
+                std::string price = kS(kK(columnValues)[1])[i]; // price : symbol
+                std::string qty = kS(kK(columnValues)[2])[i]; // qty : symbol
+                std::string instrument = kS(kK(columnValues)[4])[i]; // instrument : symbol
+                std::string value = kS(kK(columnValues)[5])[i]; // values : symbol
+                long sequence = kJ(kK(columnValues)[6])[i]; // sequence : long
+                long timestamp = kJ(kK(columnValues)[7])[i]; // timestamp : long
+
+                if(is_bid) {
+                    writer.StartArray();
+                    writer.String(price.c_str());
+                    writer.String(qty.c_str());
+                    writer.EndArray();
+                }
+            }
+            writer.EndArray();
+            writer.Key("asks");
+            writer.StartArray();
+            // asks
+            for(int i= 0; i < kK(columnValues)[0]->n; i++) {
+                bool is_bid = kG(kK(columnValues)[3])[i]; // is_bid : bool
+                std::string price = kS(kK(columnValues)[1])[i]; // price : symbol
+                std::string qty = kS(kK(columnValues)[2])[i]; // qty : symbol
+                std::string instrument = kS(kK(columnValues)[4])[i]; // instrument : symbol
+                std::string value = kS(kK(columnValues)[5])[i]; // values : symbol
+                long sequence = kJ(kK(columnValues)[6])[i]; // sequence : long
+                long timestamp = kJ(kK(columnValues)[7])[i]; // timestamp : long
+                if(!is_bid) {
+                    writer.StartArray();
+                    writer.String(price.c_str());
+                    writer.String(qty.c_str());
+                    writer.EndArray();
+                }
+            }
+            writer.EndArray();
+            writer.EndObject();
+            writer.EndObject();
+            auto depthl2json = s.GetString();
+            auto topic = std::string("depthL2_10:").append(instrument);
+            global->publish(topic, depthl2json, uWS::OpCode::TEXT, true);
+            s.Clear();
+        } 
+        if(KdbShape(response, depth_l2_25, 8)) { 
+            std::cout << "Processing depth_l2_25 table " << "\n";
+            table= kK(response)[2]->k;
+            columnNames= kK(table)[0]; 
+            columnValues= kK(table)[1]; 
+
+            StringBuffer s;
+            Writer<StringBuffer> writer{s};
+
+            writer.StartObject();
+            writer.Key("table");
+            writer.String("depthL2");
+            writer.Key("action");
+            writer.String("snapshot");
+            writer.Key("data");
+            writer.StartObject();            
+            writer.Key("instrument");
+            std::string instrument = kS(kK(columnValues)[4])[0]; // instrument : symbol
+            writer.String(instrument.c_str());
+            writer.Key("sequence");
+            writer.Uint(kJ(kK(columnValues)[6])[0]);
+            writer.Key("is_frozen");
+            writer.Bool(false);
+            writer.Key("bids");
+            writer.StartArray();
+            // bids
+            for(int i= 0; i < kK(columnValues)[0]->n; i++) {
+                bool is_bid = kG(kK(columnValues)[3])[i]; // is_bid : bool
+                std::string price = kS(kK(columnValues)[1])[i]; // price : symbol
+                std::string qty = kS(kK(columnValues)[2])[i]; // qty : symbol
+                std::string instrument = kS(kK(columnValues)[4])[i]; // instrument : symbol
+                std::string value = kS(kK(columnValues)[5])[i]; // values : symbol
+                long sequence = kJ(kK(columnValues)[6])[i]; // sequence : long
+                long timestamp = kJ(kK(columnValues)[7])[i]; // timestamp : long
+
+                if(is_bid) {
+                    writer.StartArray();
+                    writer.String(price.c_str());
+                    writer.String(qty.c_str());
+                    writer.EndArray();
+                }
+            }
+            writer.EndArray();
+            writer.Key("asks");
+            writer.StartArray();
+            // asks
+            for(int i= 0; i < kK(columnValues)[0]->n; i++) {
+                bool is_bid = kG(kK(columnValues)[3])[i]; // is_bid : bool
+                std::string price = kS(kK(columnValues)[1])[i]; // price : symbol
+                std::string qty = kS(kK(columnValues)[2])[i]; // qty : symbol
+                std::string instrument = kS(kK(columnValues)[4])[i]; // instrument : symbol
+                std::string value = kS(kK(columnValues)[5])[i]; // values : symbol
+                long sequence = kJ(kK(columnValues)[6])[i]; // sequence : long
+                long timestamp = kJ(kK(columnValues)[7])[i]; // timestamp : long
+                if(!is_bid) {
+                    writer.StartArray();
+                    writer.String(price.c_str());
+                    writer.String(qty.c_str());
+                    writer.EndArray();
+                }
+            }
+            writer.EndArray();
+            writer.EndObject();
+            writer.EndObject();
+            auto depthl2json = s.GetString();
+            auto topic = std::string("depthL2_25:").append(instrument);
+            global->publish(topic, depthl2json, uWS::OpCode::TEXT, true);
+            s.Clear();
+        }
+        if(KdbShape(response, depth_l2_50, 8)) { 
+            std::cout << "Processing depth_l2_50 table " << "\n";
+            table= kK(response)[2]->k;
+            columnNames= kK(table)[0]; 
+            columnValues= kK(table)[1]; 
+
+            StringBuffer s;
+            Writer<StringBuffer> writer{s};
+
+            writer.StartObject();
+            writer.Key("table");
+            writer.String("depthL2");
+            writer.Key("action");
+            writer.String("snapshot");
+            writer.Key("data");
+            writer.StartObject();            
+            writer.Key("instrument");
+            std::string instrument = kS(kK(columnValues)[4])[0]; // instrument : symbol
+            writer.String(instrument.c_str());
+            writer.Key("sequence");
+            writer.Uint(kJ(kK(columnValues)[6])[0]);
+            writer.Key("is_frozen");
+            writer.Bool(false);
+            writer.Key("bids");
+            writer.StartArray();
+            // bids
+            for(int i= 0; i < kK(columnValues)[0]->n; i++) {
+                bool is_bid = kG(kK(columnValues)[3])[i]; // is_bid : bool
+                std::string price = kS(kK(columnValues)[1])[i]; // price : symbol
+                std::string qty = kS(kK(columnValues)[2])[i]; // qty : symbol
+                std::string instrument = kS(kK(columnValues)[4])[i]; // instrument : symbol
+                std::string value = kS(kK(columnValues)[5])[i]; // values : symbol
+                long sequence = kJ(kK(columnValues)[6])[i]; // sequence : long
+                long timestamp = kJ(kK(columnValues)[7])[i]; // timestamp : long
+
+                if(is_bid) {
+                    writer.StartArray();
+                    writer.String(price.c_str());
+                    writer.String(qty.c_str());
+                    writer.EndArray();
+                }
+            }
+            writer.EndArray();
+            writer.Key("asks");
+            writer.StartArray();
+            // asks
+            for(int i= 0; i < kK(columnValues)[0]->n; i++) {
+                bool is_bid = kG(kK(columnValues)[3])[i]; // is_bid : bool
+                std::string price = kS(kK(columnValues)[1])[i]; // price : symbol
+                std::string qty = kS(kK(columnValues)[2])[i]; // qty : symbol
+                std::string instrument = kS(kK(columnValues)[4])[i]; // instrument : symbol
+                std::string value = kS(kK(columnValues)[5])[i]; // values : symbol
+                long sequence = kJ(kK(columnValues)[6])[i]; // sequence : long
+                long timestamp = kJ(kK(columnValues)[7])[i]; // timestamp : long
+                if(!is_bid) {
+                    writer.StartArray();
+                    writer.String(price.c_str());
+                    writer.String(qty.c_str());
+                    writer.EndArray();
+                }
+            }
+            writer.EndArray();
+            writer.EndObject();
+            writer.EndObject();
+            auto depthl2json = s.GetString();
+            auto topic = std::string("depthL2_50:").append(instrument);
+            global->publish(topic, depthl2json, uWS::OpCode::TEXT, true);
+            s.Clear();
+        }  
+        if(KdbShape(response, depth_l2_100, 8)) { 
+            std::cout << "Processing depth_l2_100 table " << "\n";
+            table= kK(response)[2]->k;
+            columnNames= kK(table)[0]; 
+            columnValues= kK(table)[1]; 
+
+            StringBuffer s;
+            Writer<StringBuffer> writer{s};
+
+            writer.StartObject();
+            writer.Key("table");
+            writer.String("depthL2");
+            writer.Key("action");
+            writer.String("snapshot");
+            writer.Key("data");
+            writer.StartObject();            
+            writer.Key("instrument");
+            std::string instrument = kS(kK(columnValues)[4])[0]; // instrument : symbol
+            writer.String(instrument.c_str());
+            writer.Key("sequence");
+            writer.Uint(kJ(kK(columnValues)[6])[0]);
+            writer.Key("is_frozen");
+            writer.Bool(false);
+            writer.Key("bids");
+            writer.StartArray();
+            // bids
+            for(int i= 0; i < kK(columnValues)[0]->n; i++) {
+                bool is_bid = kG(kK(columnValues)[3])[i]; // is_bid : bool
+                std::string price = kS(kK(columnValues)[1])[i]; // price : symbol
+                std::string qty = kS(kK(columnValues)[2])[i]; // qty : symbol
+                std::string instrument = kS(kK(columnValues)[4])[i]; // instrument : symbol
+                std::string value = kS(kK(columnValues)[5])[i]; // values : symbol
+                long sequence = kJ(kK(columnValues)[6])[i]; // sequence : long
+                long timestamp = kJ(kK(columnValues)[7])[i]; // timestamp : long
+
+                if(is_bid) {
+                    writer.StartArray();
+                    writer.String(price.c_str());
+                    writer.String(qty.c_str());
+                    writer.EndArray();
+                }
+            }
+            writer.EndArray();
+            writer.Key("asks");
+            writer.StartArray();
+            // asks
+            for(int i= 0; i < kK(columnValues)[0]->n; i++) {
+                bool is_bid = kG(kK(columnValues)[3])[i]; // is_bid : bool
+                std::string price = kS(kK(columnValues)[1])[i]; // price : symbol
+                std::string qty = kS(kK(columnValues)[2])[i]; // qty : symbol
+                std::string instrument = kS(kK(columnValues)[4])[i]; // instrument : symbol
+                std::string value = kS(kK(columnValues)[5])[i]; // values : symbol
+                long sequence = kJ(kK(columnValues)[6])[i]; // sequence : long
+                long timestamp = kJ(kK(columnValues)[7])[i]; // timestamp : long
+                if(!is_bid) {
+                    writer.StartArray();
+                    writer.String(price.c_str());
+                    writer.String(qty.c_str());
+                    writer.EndArray();
+                }
+            }
+            writer.EndArray();
+            writer.EndObject();
+            writer.EndObject();
+            auto depthl2json = s.GetString();
+            auto topic = std::string("depthL2_100:").append(instrument);
+            global->publish(topic, depthl2json, uWS::OpCode::TEXT, true);
+            s.Clear();
+        } 
+        if(KdbShape(response, depth_l2_full, 8)) { 
+            std::cout << "Processing depth_l2_full table " << "\n";
+            table= kK(response)[2]->k;
+            columnNames= kK(table)[0]; 
+            columnValues= kK(table)[1]; 
+
+            StringBuffer s;
+            Writer<StringBuffer> writer{s};
+
+            writer.StartObject();
+            writer.Key("table");
+            writer.String("depthL2");
+            writer.Key("action");
+            writer.String("snapshot");
+            writer.Key("data");
+            writer.StartObject();            
+            writer.Key("instrument");
+            std::string instrument = kS(kK(columnValues)[4])[0]; // instrument : symbol
+            writer.String(instrument.c_str());
+            writer.Key("sequence");
+            writer.Uint(kJ(kK(columnValues)[6])[0]);
+            writer.Key("is_frozen");
+            writer.Bool(false);
+            writer.Key("bids");
+            writer.StartArray();
+            // bids
+            for(int i= 0; i < kK(columnValues)[0]->n; i++) {
+                bool is_bid = kG(kK(columnValues)[3])[i]; // is_bid : bool
+                std::string price = kS(kK(columnValues)[1])[i]; // price : symbol
+                std::string qty = kS(kK(columnValues)[2])[i]; // qty : symbol
+                std::string instrument = kS(kK(columnValues)[4])[i]; // instrument : symbol
+                std::string value = kS(kK(columnValues)[5])[i]; // values : symbol
+                long sequence = kJ(kK(columnValues)[6])[i]; // sequence : long
+                long timestamp = kJ(kK(columnValues)[7])[i]; // timestamp : long
+
+                if(is_bid) {
+                    writer.StartArray();
+                    writer.String(price.c_str());
+                    writer.String(qty.c_str());
+                    writer.EndArray();
+                }
+            }
+            writer.EndArray();
+            writer.Key("asks");
+            writer.StartArray();
+            // asks
+            for(int i= 0; i < kK(columnValues)[0]->n; i++) {
+                bool is_bid = kG(kK(columnValues)[3])[i]; // is_bid : bool
+                std::string price = kS(kK(columnValues)[1])[i]; // price : symbol
+                std::string qty = kS(kK(columnValues)[2])[i]; // qty : symbol
+                std::string instrument = kS(kK(columnValues)[4])[i]; // instrument : symbol
+                std::string value = kS(kK(columnValues)[5])[i]; // values : symbol
+                long sequence = kJ(kK(columnValues)[6])[i]; // sequence : long
+                long timestamp = kJ(kK(columnValues)[7])[i]; // timestamp : long
+                if(!is_bid) {
+                    writer.StartArray();
+                    writer.String(price.c_str());
+                    writer.String(qty.c_str());
+                    writer.EndArray();
+                }
+            }
+            writer.EndArray();
+            writer.EndObject();
+            writer.EndObject();
+            auto depthl2json = s.GetString();
+            auto topic = std::string("depthL2:").append(instrument);
+            global->publish(topic, depthl2json, uWS::OpCode::TEXT, true);
+            s.Clear();
+        } 
+        if(KdbShape(response, l3_events, 9)) { 
+            std::cout << "Processing L3_EVENTS table " << "\n";
+            
+            table= kK(response)[2]->k;
+            columnNames= kK(table)[0]; 
+            columnValues= kK(table)[1]; 
+
+            StringBuffer s;
+            Writer<StringBuffer> writer(s);
+
+
+            for(int i= 0; i < kK(columnValues)[0]->n; i++) {
+                std::string price = kS(kK(columnValues)[1])[i]; // price : symbol
+                std::string qty = kS(kK(columnValues)[2])[i]; // qty : symbol
+                bool is_bid = kG(kK(columnValues)[3])[i]; // is_bid : bool
+                std::string instrument = kS(kK(columnValues)[4])[i]; // instrument : symbol
+                long sequence = kJ(kK(columnValues)[5])[i]; // sequence : long
+                long type = kH(kK(columnValues)[6])[i]; // type : short
+                std::string order_id = kS(kK(columnValues)[7])[i]; // order id : symbol
+                long timestamp = kJ(kK(columnValues)[8])[i]; // timestamp : long
+
+                writer.StartObject();
+                writer.Key("table");
+                writer.String("depthL3");
+
+                writer.Key("action");
+                writer.String("update");
+
+                writer.Key("data");
+
+                writer.StartObject();
+                    writer.Key("instrument");
+                    writer.String(instrument.c_str());
+
+                    writer.Key("order_id");
+                    writer.String(order_id.c_str());
+
+
+                    writer.Key("side");
+                    writer.Uint(is_bid);
+
+                    writer.Key("price");
+                    writer.String(price.c_str());
+
+                    writer.Key("qty");
+                    writer.String(qty.c_str());
+
+                    writer.Key("order_type");
+                    writer.Uint(type);
+
+                    writer.Key("timestamp");
+                    writer.Uint(timestamp);
+
+
+                    writer.Key("sequence");
+                    writer.Uint(sequence);
+
+                    writer.EndObject();
+                    writer.EndObject();
+                
+                auto depthL3EventsJson = s.GetString();
+                auto topic = std::string("L3_EVENTS:").append(instrument);
+                global->publish(topic, depthL3EventsJson, uWS::OpCode::TEXT, true);
+                s.Clear();
+            }
+        }
+        if(KdbShape(response, tradeTableName, 7)) { 
+            std::cout << "Processing Trade table " << "\n";
+            StringBuffer s;
+            Writer<StringBuffer> writer(s);
+
+            table= kK(response)[2]->k;
+            columnNames= kK(table)[0]; 
+            columnValues= kK(table)[1]; 
+
+            for(int i= 0; i < kK(columnValues)[0]->n; i++) {
+                std::string price = kS(kK(columnValues)[1])[i]; // price : symbol
+                std::string qty = kS(kK(columnValues)[2])[i]; // qty : symbol
+                std::string value = kS(kK(columnValues)[3])[i]; // values : symbol
+                bool is_bid = kG(kK(columnValues)[4])[i]; // is_bid : bool
+                std::string instrument = kS(kK(columnValues)[5])[i]; // instrument : symbol
+                long timestamp = kJ(kK(columnValues)[6])[i]; // timestamp : long
+                int volume = 10;
+
+                writer.StartObject();
+                writer.Key("table");
+                auto tn = std::string("trades:").append(instrument).c_str();
+                writer.String(tn);
+
+                writer.Key("action");
+                writer.String("insert");
+
+                writer.Key("data");
+
+                writer.StartObject();
+                    writer.Key("instrument");
+                    writer.String(instrument.c_str());
+
+                    writer.Key("price");
+                    writer.String(price.c_str());
+                    
+                    writer.Key("volume");
+                    writer.Uint(volume);
+
+                                    
+                    writer.Key("values");
+                    writer.String(value.c_str());
+                                    
+                    writer.Key("side");
+                    writer.Uint(is_bid);
+                                    
+                    writer.Key("timestamp");
+                    writer.Uint(timestamp);
+
+                writer.EndObject();
+                writer.EndObject();
+
+                auto tradeJson = s.GetString();
+                auto topic = std::string("trades:").append(instrument);
+                global->publish(topic, tradeJson, uWS::OpCode::TEXT, true);
+                s.Clear();
+            }
+        }
+        if(KdbShape(response, depth_l3, 8)) { 
+            std::cout << "Processing depthL3 table " << "\n";
+            table= kK(response)[2]->k;
+            columnNames= kK(table)[0]; 
+            columnValues= kK(table)[1]; 
+
+            StringBuffer s;
+            Writer<StringBuffer> writer(s);
+
+            writer.StartObject();
+            writer.Key("table");
+            writer.String("depthL3");
+            writer.Key("action");
+            writer.String("snapshot");
+            writer.Key("data");
+            writer.StartObject();
+            writer.Key("instrument");
+            std::string instrument = kS(kK(columnValues)[4])[0]; // instrument : symbol
+            writer.String(instrument.c_str());
+            writer.Key("sequence");
+            writer.Uint64(kJ(kK(columnValues)[6])[0]);
+            writer.Key("bids");
+            writer.StartArray();
+            for(int i= 0; i < kK(columnValues)[0]->n; i++) {
+                std::string price = kS(kK(columnValues)[1])[i]; // price : symbol
+                std::string qty = kS(kK(columnValues)[2])[i]; // qty : symbol
+                bool is_bid = kG(kK(columnValues)[3])[i]; // is_bid : bool
+                std::string instrument = kS(kK(columnValues)[4])[i]; // instrument : symbol
+                std::string value = kS(kK(columnValues)[5])[i]; // values : symbol
+                long sequence = kJ(kK(columnValues)[6])[i]; // sequence : long
+                std::string order_id = kS(kK(columnValues)[7])[i]; // order id : symbol
+                long timestamp = kJ(kK(columnValues)[8])[i]; // timestamp : long
+                int order_type = 1;
+                if(is_bid) {
+                    writer.StartArray();
+                    writer.String(price.c_str());
+                    writer.String(qty.c_str());
+                    writer.EndArray();
+                }
+            }
+            writer.EndArray();
+            writer.Key("asks");
+            writer.StartArray();
+            for(int i= 0; i < kK(columnValues)[0]->n; i++) {
+                std::string price = kS(kK(columnValues)[1])[i]; // price : symbol
+                std::string qty = kS(kK(columnValues)[2])[i]; // qty : symbol
+                bool is_bid = kG(kK(columnValues)[3])[i]; // is_bid : bool
+                std::string instrument = kS(kK(columnValues)[4])[i]; // instrument : symbol
+                std::string value = kS(kK(columnValues)[5])[i]; // values : symbol
+                long sequence = kJ(kK(columnValues)[6])[i]; // sequence : long
+                std::string order_id = kS(kK(columnValues)[7])[i]; // order id : symbol
+                long timestamp = kJ(kK(columnValues)[8])[i]; // timestamp : long
+                int order_type = 1;
+                if(!is_bid) {
+                    writer.StartArray();
+                    writer.String(price.c_str());
+                    writer.String(qty.c_str());
+                    writer.EndArray();
+                }
+            }
+            writer.EndArray();
+            writer.EndObject();
+            writer.EndObject();
+            auto depthL3Json = s.GetString();
+            auto topic = std::string("depthL3:").append(instrument);
+            global->publish(topic, depthL3Json, uWS::OpCode::TEXT, true);
+            s.Clear();
+        }
+        if(KdbShape(response, l2_events, 6)) { 
+            std::cout << "Processing L2_EVENTS table " << "\n";
+            table= kK(response)[2]->k;
+            columnNames= kK(table)[0]; 
+            columnValues= kK(table)[1];
+            
+            StringBuffer s;
+            Writer<StringBuffer> writer(s);
+
+            writer.StartObject();
+            writer.Key("table");
+            writer.String("depthL2");
+            writer.Key("action");
+            writer.String("update");
+            writer.Key("data");
+            writer.StartObject();
+
+            for(int i= 0; i < kK(columnValues)[0]->n; i++) {
+                std::string price = kS(kK(columnValues)[1])[i]; // price : symbol
+                std::string qty = kS(kK(columnValues)[2])[i]; // qty : symbol
+                bool is_bid = kG(kK(columnValues)[3])[i]; // is_bid : bool
+                std::string instrument = kS(kK(columnValues)[4])[i]; // instrument : symbol
+                long sequence = kJ(kK(columnValues)[5])[i]; // sequence : long
+                int timestamp = kJ(kK(columnValues)[6])[i]; // timestamp
+
+                writer.Key("instrument");
+                writer.String(instrument.c_str());
+                writer.Key("timestamp");
+                writer.Uint(timestamp);
+                writer.Key("sequence");
+                writer.Uint(sequence);
+                writer.Key("price");
+                writer.String(price.c_str());
+                writer.Key("side");
+                writer.Key("side");
+                writer.Uint(is_bid);
+                writer.Key("qty");
+                writer.String(qty.c_str());
+
+                writer.EndObject();
+                writer.EndObject();
+
+                auto l2Eventsjson = s.GetString();
+                auto topic = std::string("L2_EVENTS:").append(instrument);
+                global->publish(topic, l2Eventsjson, uWS::OpCode::TEXT, true);
+                s.Clear();
+            }
+        }
+        r0(response);
+    });
+  
+    global = &app;
+    app.run();
 }
+
