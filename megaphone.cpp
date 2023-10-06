@@ -2,9 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
-#include "hiredis/hiredis.h"
-#include "hiredis/async.h"
-#include "hiredis/adapters/libuv.h"
 
 #include "App.h"
 #include "k.h"
@@ -12,7 +9,7 @@
 #include <chrono>
 #include <unordered_set>
 
-/* We use libuv to share the same event loop across hiredis and uSockets */
+/* We use libuv to share the same event loop across kdb and uSockets */
 /* It could also be possible to use uSockets own event loop, but libuv works fine */
 #include <uv.h>
 
@@ -21,8 +18,6 @@ const int MESSAGE_LENGTH = 7;
 const int SUBSCRIBE_LENGTH = 9;
 const int PSUBSCRIBE_LENGTH = 10;
 
-const char *redisHostname;
-int redisPort;
 const char *Topics;
 
 /* Init zero-allocation rapidjson parsing */
@@ -39,8 +34,6 @@ char parseBuffer[1024];
 MemoryPoolAllocator<> valueAllocator(valueBuffer, sizeof(valueBuffer));
 MemoryPoolAllocator<> parseAllocator(parseBuffer, sizeof(parseBuffer));
 
-/* We use this to ping Redis */
-uv_timer_t pingTimer;
 int missingPongs;
 uint64_t lastPong;
 uWS::App* global;
@@ -84,18 +77,18 @@ struct MetaData {
 };
 
 int main() {
-    /* REDIS_TOPIC is the only required environment variable */
+    /* TOPICS is the only required environment variable */
     Topics = getenv("TOPICS");
     if (!Topics) {
-        printf("Error: REDIS_TOPIC environment variable not set\n");
+        printf("Error: WS TOPICS environment variable not set\n");
         return -1;
     }
 
     /* Put all allowed topics in a hash for quick validation */
-    std::string_view validRedisTopics(Topics);
-    while (validRedisTopics.length()) {
-        auto end = validRedisTopics.find(" ");
-        std::string_view topic = validRedisTopics.substr(0, end);
+    std::string_view validTopicsWs(Topics);
+    while (validTopicsWs.length()) {
+        auto end = validTopicsWs.find(" ");
+        std::string_view topic = validTopicsWs.substr(0, end);
 
         std::cout << "Using <" << topic << "> as valid topic" << std::endl;
 
@@ -103,7 +96,7 @@ int main() {
         if (end == std::string_view::npos) {
             break;
         }
-        validRedisTopics.remove_prefix(end + 1);
+        validTopicsWs.remove_prefix(end + 1);
     }
 
     /* Read some KDB environment variables */
