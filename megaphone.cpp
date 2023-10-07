@@ -253,7 +253,12 @@ int main() {
         
         const auto &obj = (MetaData*)handle->data;
 
-        K response, table, columnNames, columnValues;
+        K response = k(obj->handle,  ".u.sub[`;`]", (K)0);
+        
+        if(!response) {
+            return;
+        }
+        
         K tradeTableName = ks("trade");
         K depth_l2_full = ks("L2_FULL");
         K depth_l2_10 = ks("L2_10");
@@ -265,16 +270,11 @@ int main() {
         K ticker = ks("ticker");
         K l2_events = ks("l2_events");
 
-        response = k(obj->handle,  ".u.sub[`;`]", (K)0);
-        
-        if(!response)
-            return;
-
         if(KdbShape(response, depth_l2_10, 8)) { 
             std::cout << "Processing depth_l2_10 table " << "\n";
-            table= kK(response)[2]->k;
-            columnNames= kK(table)[0]; 
-            columnValues= kK(table)[1]; 
+            K table= kK(response)[2]->k;
+            K columnNames= kK(table)[0]; 
+            K columnValues= kK(table)[1]; 
 
             StringBuffer s;
             Writer<StringBuffer> writer{s};
@@ -304,7 +304,6 @@ int main() {
                 std::string value = kS(kK(columnValues)[5])[i]; // values : symbol
                 long sequence = kJ(kK(columnValues)[6])[i]; // sequence : long
                 long timestamp = kJ(kK(columnValues)[7])[i]; // timestamp : long
-
                 if(is_bid) {
                     writer.StartArray();
                     writer.String(price.c_str());
@@ -341,9 +340,9 @@ int main() {
         } 
         if(KdbShape(response, depth_l2_25, 8)) { 
             std::cout << "Processing depth_l2_25 table " << "\n";
-            table= kK(response)[2]->k;
-            columnNames= kK(table)[0]; 
-            columnValues= kK(table)[1]; 
+            K table= kK(response)[2]->k;
+            K columnNames= kK(table)[0]; 
+            K columnValues= kK(table)[1]; 
 
             StringBuffer s;
             Writer<StringBuffer> writer{s};
@@ -410,9 +409,9 @@ int main() {
         }
         if(KdbShape(response, depth_l2_50, 8)) { 
             std::cout << "Processing depth_l2_50 table " << "\n";
-            table= kK(response)[2]->k;
-            columnNames= kK(table)[0]; 
-            columnValues= kK(table)[1]; 
+            K table= kK(response)[2]->k;
+            K columnNames= kK(table)[0]; 
+            K columnValues= kK(table)[1]; 
 
             StringBuffer s;
             Writer<StringBuffer> writer{s};
@@ -479,9 +478,9 @@ int main() {
         }  
         if(KdbShape(response, depth_l2_100, 8)) { 
             std::cout << "Processing depth_l2_100 table " << "\n";
-            table= kK(response)[2]->k;
-            columnNames= kK(table)[0]; 
-            columnValues= kK(table)[1]; 
+            K table= kK(response)[2]->k;
+            K columnNames= kK(table)[0]; 
+            K columnValues= kK(table)[1]; 
 
             StringBuffer s;
             Writer<StringBuffer> writer{s};
@@ -548,9 +547,9 @@ int main() {
         } 
         if(KdbShape(response, depth_l2_full, 8)) { 
             std::cout << "Processing depth_l2_full table " << "\n";
-            table= kK(response)[2]->k;
-            columnNames= kK(table)[0]; 
-            columnValues= kK(table)[1]; 
+            K table= kK(response)[2]->k;
+            K columnNames= kK(table)[0]; 
+            K columnValues= kK(table)[1]; 
 
             StringBuffer s;
             Writer<StringBuffer> writer{s};
@@ -618,9 +617,9 @@ int main() {
         if(KdbShape(response, l3_events, 9)) { 
             std::cout << "Processing L3_EVENTS table " << "\n";
             
-            table= kK(response)[2]->k;
-            columnNames= kK(table)[0]; 
-            columnValues= kK(table)[1]; 
+            K table= kK(response)[2]->k;
+            K columnNames= kK(table)[0]; 
+            K columnValues= kK(table)[1]; 
 
             StringBuffer s;
             Writer<StringBuffer> writer(s);
@@ -686,9 +685,9 @@ int main() {
             StringBuffer s;
             Writer<StringBuffer> writer(s);
 
-            table= kK(response)[2]->k;
-            columnNames= kK(table)[0]; 
-            columnValues= kK(table)[1]; 
+            K table= kK(response)[2]->k;
+            K columnNames= kK(table)[0]; 
+            K columnValues= kK(table)[1]; 
 
             for(int i= 0; i < kK(columnValues)[0]->n; i++) {
                 std::string price = kS(kK(columnValues)[1])[i]; // price : symbol
@@ -740,9 +739,9 @@ int main() {
         }
         if(KdbShape(response, depth_l3, 8)) { 
             std::cout << "Processing depthL3 table " << "\n";
-            table= kK(response)[2]->k;
-            columnNames= kK(table)[0]; 
-            columnValues= kK(table)[1]; 
+            K table= kK(response)[2]->k;
+            K columnNames= kK(table)[0]; 
+            K columnValues= kK(table)[1]; 
 
             StringBuffer s;
             Writer<StringBuffer> writer(s);
@@ -808,9 +807,9 @@ int main() {
         }
         if(KdbShape(response, l2_events, 7)) { 
             std::cout << "Processing L2_EVENTS table " << "\n";
-            table= kK(response)[2]->k;
-            columnNames= kK(table)[0]; 
-            columnValues= kK(table)[1];
+            K table= kK(response)[2]->k;
+            K columnNames= kK(table)[0]; 
+            K columnValues= kK(table)[1];
             
             StringBuffer s;
             Writer<StringBuffer> writer(s);
@@ -854,7 +853,18 @@ int main() {
                 s.Clear();
             }
         }
-        r0(response);
+        if(response)
+            r0(response);
+        r0(depth_l2_full);
+        r0(depth_l2_10);
+        r0(depth_l2_25);
+        r0(depth_l2_50);
+        r0(depth_l2_100);
+        r0(depth_l3);
+        r0(l3_events);
+        r0(ticker);
+        r0(l2_events);
+        r0(tradeTableName);
     });
   
     global = &app;
