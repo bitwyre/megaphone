@@ -77,7 +77,7 @@ struct MetaData {
 };
 
 int main() {
-    std::cout << "Deployed Logs" << std::endl;
+    std::cout << "Deployed Logs 2" << std::endl;
     /* TOPICS is the only required environment variable */
     Topics = getenv("TOPICS");
     if (!Topics) {
@@ -840,8 +840,7 @@ int main() {
                 writer.Key("price");
                 writer.String(price.c_str());
                 writer.Key("side");
-                writer.Key("side");
-                writer.Uint(is_bid);
+                writer.Bool(is_bid);
                 writer.Key("qty");
                 writer.String(qty.c_str());
 
