@@ -77,6 +77,7 @@ struct MetaData {
 };
 
 int main() {
+    std::cout << "Deployed Logs" << std::endl;
     /* TOPICS is the only required environment variable */
     Topics = getenv("TOPICS");
     if (!Topics) {
