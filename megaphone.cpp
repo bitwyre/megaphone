@@ -271,7 +271,7 @@ int main() {
         K l2_events = ks("l2_events");
 
         if(KdbShape(response, depth_l2_10, 8)) { 
-            std::cout << "Processing depth_l2_10 table " << "\n";
+            std::cout << "Processing depth_l2_10 table " << std::endl;
             K table= kK(response)[2]->k;
             K columnNames= kK(table)[0]; 
             K columnValues= kK(table)[1]; 
@@ -339,7 +339,7 @@ int main() {
             s.Clear();
         } 
         if(KdbShape(response, depth_l2_25, 8)) { 
-            std::cout << "Processing depth_l2_25 table " << "\n";
+            std::cout << "Processing depth_l2_25 table " << std::endl;
             K table= kK(response)[2]->k;
             K columnNames= kK(table)[0]; 
             K columnValues= kK(table)[1]; 
@@ -408,7 +408,7 @@ int main() {
             s.Clear();
         }
         if(KdbShape(response, depth_l2_50, 8)) { 
-            std::cout << "Processing depth_l2_50 table " << "\n";
+            std::cout << "Processing depth_l2_50 table " << std::endl;
             K table= kK(response)[2]->k;
             K columnNames= kK(table)[0]; 
             K columnValues= kK(table)[1]; 
@@ -477,7 +477,7 @@ int main() {
             s.Clear();
         }  
         if(KdbShape(response, depth_l2_100, 8)) { 
-            std::cout << "Processing depth_l2_100 table " << "\n";
+            std::cout << "Processing depth_l2_100 table " << std::endl;
             K table= kK(response)[2]->k;
             K columnNames= kK(table)[0]; 
             K columnValues= kK(table)[1]; 
@@ -546,7 +546,7 @@ int main() {
             s.Clear();
         } 
         if(KdbShape(response, depth_l2_full, 8)) { 
-            std::cout << "Processing depth_l2_full table " << "\n";
+            std::cout << "Processing depth_l2_full table " << std::endl;
             K table= kK(response)[2]->k;
             K columnNames= kK(table)[0]; 
             K columnValues= kK(table)[1]; 
@@ -615,7 +615,7 @@ int main() {
             s.Clear();
         } 
         if(KdbShape(response, l3_events, 9)) { 
-            std::cout << "Processing L3_EVENTS table " << "\n";
+            std::cout << "Processing L3_EVENTS table " << std::endl;
             
             K table= kK(response)[2]->k;
             K columnNames= kK(table)[0]; 
@@ -681,7 +681,7 @@ int main() {
             }
         }
         if(KdbShape(response, tradeTableName, 7)) { 
-            std::cout << "Processing Trade table " << "\n";
+            std::cout << "Processing Trade table " << std::endl;
             StringBuffer s;
             Writer<StringBuffer> writer(s);
 
@@ -738,7 +738,7 @@ int main() {
             }
         }
         if(KdbShape(response, depth_l3, 8)) { 
-            std::cout << "Processing depthL3 table " << "\n";
+            std::cout << "Processing depthL3 table " << std::endl;
             K table= kK(response)[2]->k;
             K columnNames= kK(table)[0]; 
             K columnValues= kK(table)[1]; 
@@ -806,7 +806,7 @@ int main() {
             s.Clear();
         }
         if(KdbShape(response, l2_events, 7)) { 
-            std::cout << "Processing L2_EVENTS table " << "\n";
+            std::cout << "Processing L2_EVENTS table " << std::endl;
             K table= kK(response)[2]->k;
             K columnNames= kK(table)[0]; 
             K columnValues= kK(table)[1];
