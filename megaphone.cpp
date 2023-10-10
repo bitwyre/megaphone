@@ -77,7 +77,7 @@ struct MetaData {
 };
 
 int main() {
-    std::cout << "Deployed Logs 2" << std::endl;
+    std::cout << "Deployed Logs 3" << std::endl;
     /* TOPICS is the only required environment variable */
     Topics = getenv("TOPICS");
     if (!Topics) {
@@ -260,13 +260,13 @@ int main() {
             return;
         }
         
-        K tradeTableName = ks("trade");
-        K depth_l2_full = ks("L2_FULL");
-        K depth_l2_10 = ks("L2_10");
-        K depth_l2_25 = ks("L2_25");
-        K depth_l2_50 = ks("L2_50");
-        K depth_l2_100 = ks("L2_100");
-        K depth_l3 = ks("depth_l3");
+        K tradeTableName = ks("trades");
+        K depth_l2_full = ks("depthL2");
+        K depth_l2_10 = ks("depthL2_10");
+        K depth_l2_25 = ks("depthL2_25");
+        K depth_l2_50 = ks("depthL2_50");
+        K depth_l2_100 = ks("depthL2_100");
+        K depth_l3 = ks("depthL3");
         K l3_events = ks("l3_events");
         K ticker = ks("ticker");
         K l2_events = ks("l2_events");
