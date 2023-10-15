@@ -666,7 +666,7 @@ int main() {
                     writer.Uint(type);
 
                     writer.Key("timestamp");
-                    writer.Uint(timestamp);
+                    writer.Uint64(timestamp);
 
 
                     writer.Key("sequence");
@@ -697,7 +697,7 @@ int main() {
                 bool is_bid = kG(kK(columnValues)[4])[i]; // is_bid : bool
                 std::string instrument = kS(kK(columnValues)[5])[i]; // instrument : symbol
                 long timestamp = kJ(kK(columnValues)[6])[i]; // timestamp : long
-                int volume = 10;
+
 
                 writer.StartObject();
                 writer.Key("table");
@@ -718,7 +718,7 @@ int main() {
                     writer.String(price.c_str());
                     
                     writer.Key("volume");
-                    writer.Uint(volume);
+                    writer.String(qty.c_str());
 
                                     
                     writer.Key("values");
@@ -728,7 +728,7 @@ int main() {
                     writer.Uint(is_bid);
                                     
                     writer.Key("timestamp");
-                    writer.Uint(timestamp);
+                    writer.Uint64(timestamp);
 
                 writer.EndObject();
                 writer.EndObject();
@@ -835,7 +835,7 @@ int main() {
                 writer.Key("instrument");
                 writer.String(instrument.c_str());
                 writer.Key("timestamp");
-                writer.Uint(timestamp);
+                writer.Uint64(timestamp);
                 writer.Key("sequence");
                 writer.Uint(sequence);
                 writer.Key("price");
