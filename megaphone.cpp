@@ -701,7 +701,8 @@ int main() {
 
                 writer.StartObject();
                 writer.Key("table");
-                auto tn = std::string("trades:").append(instrument).c_str();
+                auto tablesName = std::string("trades:").append(instrument);
+                auto tn = tablesName.c_str();
                 writer.String(tn);
 
                 writer.Key("action");
