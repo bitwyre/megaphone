@@ -282,7 +282,7 @@ int main() {
 
             writer.StartObject();
             writer.Key("table");
-            writer.String("depthL2");
+            writer.String("depthL2_10");
             writer.Key("action");
             writer.String("snapshot");
             writer.Key("data");
@@ -350,7 +350,7 @@ int main() {
 
             writer.StartObject();
             writer.Key("table");
-            writer.String("depthL2");
+            writer.String("depthL2_25");
             writer.Key("action");
             writer.String("snapshot");
             writer.Key("data");
@@ -419,7 +419,7 @@ int main() {
 
             writer.StartObject();
             writer.Key("table");
-            writer.String("depthL2");
+            writer.String("depthL2_50");
             writer.Key("action");
             writer.String("snapshot");
             writer.Key("data");
@@ -488,7 +488,7 @@ int main() {
 
             writer.StartObject();
             writer.Key("table");
-            writer.String("depthL2");
+            writer.String("depthL2_100");
             writer.Key("action");
             writer.String("snapshot");
             writer.Key("data");
@@ -638,7 +638,7 @@ int main() {
 
                 writer.StartObject();
                 writer.Key("table");
-                writer.String("depthL3");
+                writer.String("l3_events");
 
                 writer.Key("action");
                 writer.String("update");
@@ -701,9 +701,7 @@ int main() {
 
                 writer.StartObject();
                 writer.Key("table");
-                auto tablesName = std::string("trades:").append(instrument);
-                auto tn = tablesName.c_str();
-                writer.String(tn);
+                writer.String("trades");
 
                 writer.Key("action");
                 writer.String("insert");
@@ -818,7 +816,7 @@ int main() {
 
             writer.StartObject();
             writer.Key("table");
-            writer.String("depthL2");
+            writer.String("l2_events");
             writer.Key("action");
             writer.String("update");
             writer.Key("data");
