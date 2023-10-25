@@ -488,7 +488,7 @@ int main() {
 
             writer.StartObject();
             writer.Key("table");
-            writer.String("depthL2_100");
+            writer.String("depthL2");
             writer.Key("action");
             writer.String("snapshot");
             writer.Key("data");
