@@ -737,6 +737,90 @@ int main() {
                 s.Clear();
             }
         }
+        if(KdbShape(response, ticker, 15)) { 
+            std::cout << "Processing Ticker table " << std::endl;
+            StringBuffer s;
+            Writer<StringBuffer> writer(s);
+
+            K table= kK(response)[2]->k;
+            K columnNames= kK(table)[0]; 
+            K columnValues= kK(table)[1]; 
+
+            for(int i= 0; i < kK(columnValues)[0]->n; i++) {
+                std::string price = kS(kK(columnValues)[1])[i]; // price : symbol
+                std::string instrument = kS(kK(columnValues)[2])[i]; // instrument : symbol
+                std::string baseAsset = kS(kK(columnValues)[3])[i]; // asset base : symbol
+                std::string quoteAsset = kS(kK(columnValues)[4])[i]; // asset quote : symbol
+                std::string high = kS(kK(columnValues)[5])[i]; // 24h high : symbol
+                std::string low = kS(kK(columnValues)[6])[i]; // 24h low : symbol
+                std::string pctChange = kS(kK(columnValues)[7])[i]; // 24h pct change : symbol
+                std::string volBase = kS(kK(columnValues)[8])[i]; // 24h vol base : symbol
+                std::string volQuote = kS(kK(columnValues)[9])[i]; // 24h vol quote : symbol
+                std::string bestBid = kS(kK(columnValues)[10])[i]; // best bid : symbol
+                std::string bestAsk = kS(kK(columnValues)[11])[i]; // best ask : symbol
+                long timestamp = kJ(kK(columnValues)[12])[i]; // timestamp : long
+
+                writer.StartObject();
+                writer.Key("table");
+                writer.String("ticker");
+
+                writer.Key("action");
+                writer.String("insert");
+
+                writer.Key("data");
+
+                writer.StartObject();
+                    writer.Key("instrument");
+                    writer.String(instrument.c_str());
+
+                    writer.Key("asset_base");
+                    writer.String(baseAsset.c_str());
+                    
+                    writer.Key("asset_quote");
+                    writer.String(quoteAsset.c_str());                    
+                    
+                    writer.Key("high");
+                    writer.String(high.c_str());
+                    
+                    writer.Key("low");
+                    writer.String(low.c_str());
+         
+                    writer.Key("percent_change");
+                    writer.String(pctChange.c_str());
+
+                    writer.Key("volume_base");
+                    writer.String(volBase.c_str());
+
+                    writer.Key("volume_quote");
+                    writer.String(volQuote.c_str());
+                    
+                    writer.Key("last");
+                    writer.String(price.c_str());
+                    
+                    writer.Key("best_bid");
+                    writer.String(bestBid.c_str());
+                    
+                    writer.Key("best_ask");
+                    writer.String(bestAsk.c_str());
+      
+                    writer.Key("timestamp");
+                    writer.Uint64(timestamp);
+
+                    writer.Key("market");
+                    writer.String("crypto");
+                    
+                    writer.Key("is_frozen");
+                    writer.Bool(false);
+
+                writer.EndObject();
+                writer.EndObject();
+
+                auto tickerJson = s.GetString();
+                auto topic = std::string("ticker:").append(instrument);
+                global->publish(topic, tickerJson, uWS::OpCode::TEXT, true);
+                s.Clear();
+            }
+        }
         if(KdbShape(response, depth_l3, 8)) { 
             std::cout << "Processing depthL3 table " << std::endl;
             K table= kK(response)[2]->k;
