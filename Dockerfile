@@ -7,7 +7,7 @@ RUN apt-get update && \
     apt-get install -y build-essential automake autoconf autotools-dev make libtool zlib1g-dev && \
     apt-get clean
 
-COPY shared/megaphone/ /app/megaphone
+COPY . /app/megaphone
 
 WORKDIR /app
 RUN make deps -C megaphone && \
