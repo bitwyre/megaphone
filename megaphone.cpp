@@ -818,6 +818,8 @@ int main() {
                 auto tickerJson = s.GetString();
                 auto topic = std::string("ticker:").append(instrument);
                 global->publish(topic, tickerJson, uWS::OpCode::TEXT, true);
+                auto topic2 = std::string("ticker");
+                global->publish(topic2, tickerJson, uWS::OpCode::TEXT, true);
                 s.Clear();
             }
         }
