@@ -1,6 +1,6 @@
 #include <libphone.hpp>
 
-int main() {
+auto main() -> int {
 	LibPhone::Phone p {};
 	p.run();
 }

@@ -61,12 +61,12 @@ Phone::Phone() : m_app(uWS::App({.passphrase = "1234"})) {
 					   /* You may access ws->getUserData() here */
 				   }});
 
-	auto loop = uWS::Loop::get();
+	auto* loop = uWS::Loop::get();
 
-	struct us_loop_t* loop_t = (struct us_loop_t*)loop;
-	struct us_timer_t* delay_timer = us_create_timer(loop_t, 0, 0);
+	auto* loop_t = reinterpret_cast<struct us_loop_t*>(loop);
+	auto* delay_timer = us_create_timer(loop_t, 0, 0);
 
-	// broadcast the unix time as millis every 8 millis
+	// broadcast the unix time as millis every millisecond
 	us_timer_set(
 		delay_timer, [](struct us_timer_t*) {}, 1, 1);
 

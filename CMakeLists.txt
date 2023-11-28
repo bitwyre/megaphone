@@ -4,7 +4,7 @@ project("Megaphone")
 # Project options
 option(USE_CLANG_TIDY OFF "An option to turn off clang-tidy")
 
-# Set C++ options
+# Set project options
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -52,9 +52,10 @@ target_link_libraries(megaphone PUBLIC phone spdlog::spdlog)
 
 # Turn clang-tidy off/on
 if (USE_CLANG_TIDY)
+    message("Using clang tidy")
     # Find clang tidy
     find_program(CLANG_TIDY_EXE NAMES "clang-tidy")
-    set(CLANG_TIDY_COMMAND "${CLANG_TIDY_EXE}" "-checks=*,-llvmlibc-*,-google-*,-fuchsia-*,-android-*,-altera-*,-abseil-*,-boost-*,-objc-*,-openmp-*,-zircon-*,-misc-include-cleaner,-readability-convert-member-functions-to-static")
+    set(CLANG_TIDY_COMMAND "${CLANG_TIDY_EXE}" "-warnings-as-errors=true -checks=*,-llvmlibc-*,-google-*,-fuchsia-*,-android-*,-altera-*,-abseil-*,-boost-*,-objc-*,-openmp-*,-zircon-*,-misc-include-cleaner,-readability-convert-member-functions-to-static")
 
     set_target_properties(megaphone PROPERTIES
         CXX_CLANG_TIDY "${CLANG_TIDY_COMMAND}"
