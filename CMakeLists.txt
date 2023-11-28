@@ -1,0 +1,74 @@
+cmake_minimum_required(VERSION 3.22)
+project("Megaphone")
+
+# Project options
+option(USE_CLANG_TIDY OFF "An option to turn off clang-tidy")
+
+# Set C++ options
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+include(cmake/FetchPackages.cmake)
+
+file(GLOB_RECURSE LIBPHONE_SOURCES
+    source/libphone/*.cpp
+)
+add_library(phone ${LIBPHONE_SOURCES})
+
+file(GLOB_RECURSE MEGAPHONE_SOURCES
+    source/megaphone/*.cpp
+)
+add_executable(megaphone ${MEGAPHONE_SOURCES})
+
+# Set compiler flags
+set(COMPILER_FLAGS
+    # All the warnings
+    -Wall -Wextra
+    # Except for the ones that aren't mine
+    -Wno-deprecated -Wno-unused-parameter
+    # Add asan options
+    -fsanitize=address -fsanitize=pointer-compare
+    -fsanitize=pointer-subtract -fsanitize=undefined
+    -fsanitize=float-divide-by-zero -fsanitize=float-cast-overflow
+    # Stack pointer
+    -fno-omit-frame-pointer
+)
+
+target_compile_options(megaphone PUBLIC ${COMPILER_FLAGS})
+target_link_options(megaphone PUBLIC ${COMPILER_FLAGS})
+
+target_compile_options(phone PUBLIC ${COMPILER_FLAGS})
+target_link_options(phone PUBLIC ${COMPILER_FLAGS})
+
+# Add include dirs
+target_include_directories(megaphone PUBLIC source/megaphone)
+target_include_directories(phone PUBLIC source/libphone)
+
+# Link libphone to the megaphone exec
+target_link_libraries(phone PUBLIC uWebSockets spdlog::spdlog)
+target_link_libraries(megaphone PUBLIC phone spdlog::spdlog)
+
+# Turn clang-tidy off/on
+if (USE_CLANG_TIDY)
+    # Find clang tidy
+    find_program(CLANG_TIDY_EXE NAMES "clang-tidy")
+    set(CLANG_TIDY_COMMAND "${CLANG_TIDY_EXE}" "-checks=*,-llvmlibc-*,-google-*,-fuchsia-*,-android-*,-altera-*,-abseil-*,-boost-*,-objc-*,-openmp-*,-zircon-*,-misc-include-cleaner,-readability-convert-member-functions-to-static")
+
+    set_target_properties(megaphone PROPERTIES
+        CXX_CLANG_TIDY "${CLANG_TIDY_COMMAND}"
+    )
+    set_target_properties(phone PROPERTIES
+        CXX_CLANG_TIDY "${CLANG_TIDY_COMMAND}"
+    )
+endif()
+
+# Tests
+file(GLOB_RECURSE TESTS_SOURCES
+    tests/*.cpp
+)
+add_executable(tests ${TESTS_SOURCES})
+target_link_libraries(tests
+    PRIVATE Catch2::Catch2WithMain
+)
