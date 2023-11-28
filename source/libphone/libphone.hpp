@@ -1,5 +1,7 @@
 #pragma once
 
+#include "serializer/serializer.hpp"
+
 #include "App.h"
 #include <set>
 
@@ -33,6 +35,8 @@ private:
 
 	std::vector<std::string> m_all_topics {"bnb_usdt_spot", "busd_usd_spot"};
 	int users;
+
+	Serializer m_serializer;
 };
 
 } // namespace LibPhone

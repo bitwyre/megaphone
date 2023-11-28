@@ -72,4 +72,5 @@ file(GLOB_RECURSE TESTS_SOURCES
 add_executable(tests ${TESTS_SOURCES})
 target_link_libraries(tests
     PRIVATE Catch2::Catch2WithMain
+    PRIVATE phone
 )
