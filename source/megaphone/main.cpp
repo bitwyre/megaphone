@@ -5,11 +5,8 @@
 // depending on ZENOHCXX_ZENOHPICO or ZENOHCXX_ZENOHC setting
 // and places it to the zenoh namespace
 //
+#include "zenohpico.hxx"
 #include <iostream>
-
-#include "zenoh.hxx"
-
-using namespace zenoh;
 
 class CustomerClass {
 public:
@@ -18,25 +15,25 @@ public:
 	CustomerClass& operator=(const CustomerClass&) = delete;
 	CustomerClass& operator=(CustomerClass&&) = delete;
 
-	CustomerClass(Session& session, const KeyExprView& keyexpr) : pub(nullptr) {
-		pub = expect<Publisher>(session.declare_publisher(keyexpr));
+	CustomerClass(zenohpico::Session& session, const zenohpico::KeyExprView& keyexpr) : pub(nullptr) {
+		pub = zenohpico::expect<zenohpico::Publisher>(session.declare_publisher(keyexpr));
 	}
 
-	void put(const BytesView& value) { pub.put(value); }
+	void put(const zenohpico::BytesView& value) { pub.put(value); }
 
 private:
-	Publisher pub;
+	zenohpico::Publisher pub;
 };
 
 int main(int, char**) {
 	try {
-		Config config;
-		auto session = expect<Session>(open(std::move(config)));
+		zenohpico::Config config;
+		auto session = zenohpico::expect<zenohpico::Session>(zenohpico::open(std::move(config)));
 		std::string keyexpr = "demo/example/simple";
 		std::string value = "Simple!";
 		CustomerClass customer(session, keyexpr);
 		customer.put(value);
-	} catch (ErrorMessage e) {
+	} catch (zenohpico::ErrorMessage e) {
 		std::cout << "Error: " << e.as_string_view() << std::endl;
 	}
 }
