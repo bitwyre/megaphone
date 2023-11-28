@@ -1,0 +1,29 @@
+{
+    "table": "depthL2",
+    "action": "snapshot",
+    "data": {
+        "instrument": "usdt_jidr_spot",
+        "sequence": 2913539096,
+        "is_frozen": false,
+        "bids": [
+            [
+                15862.0,
+                2.42
+            ],
+            [
+                15861.0,
+                2.08
+            ]
+        ],
+        "asks": [
+            [
+                15879.0,
+                2.32
+            ],
+            [
+                15892.0,
+                2.02
+            ]
+        ]
+    }
+}

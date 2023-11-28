@@ -30,8 +30,8 @@ set(COMPILER_FLAGS
     -Wno-deprecated -Wno-unused-parameter
     # Add asan options
     -fsanitize=address -fsanitize=pointer-compare
-    -fsanitize=pointer-subtract -fsanitize=undefined
-    -fsanitize=float-divide-by-zero -fsanitize=float-cast-overflow
+    -fsanitize=pointer-subtract -fsanitize=float-divide-by-zero
+    -fsanitize=float-cast-overflow
     # Stack pointer
     -fno-omit-frame-pointer
 )
@@ -47,8 +47,8 @@ target_include_directories(megaphone PUBLIC source/megaphone)
 target_include_directories(phone PUBLIC source/libphone)
 
 # Link libphone to the megaphone exec
-target_link_libraries(phone PUBLIC uWebSockets spdlog::spdlog)
-target_link_libraries(megaphone PUBLIC phone spdlog::spdlog)
+target_link_libraries(phone PUBLIC uWebSockets spdlog::spdlog rapidjsonheaderonly)
+target_link_libraries(megaphone PUBLIC phone spdlog::spdlog rapidjsonheaderonly)
 
 # Turn clang-tidy off/on
 if (USE_CLANG_TIDY)

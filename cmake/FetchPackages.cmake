@@ -23,20 +23,32 @@ FetchContent_Declare(
     GIT_TAG        c9f4d0e
 )
 
+# Fetch dependancy: uWebSockets
 FetchContent_Declare(
     uWebSockets_content
-    GIT_REPOSITORY https://github.com/uNetworking/uWebSockets
+    GIT_REPOSITORY https://github.com/uNetworking/uWebSockets.git
     GIT_TAG v20.48.0
     GIT_SHALLOW ON
     GIT_SUBMODULES ""
 )
 
+# Fetch dependancy: uSockets -> uWebSockets
 FetchContent_Declare(
     uSockets_content
-    GIT_REPOSITORY https://github.com/uNetworking/uSockets
+    GIT_REPOSITORY https://github.com/uNetworking/uSockets.git
     GIT_TAG v0.8.6
     GIT_SHALLOW ON
     GIT_SUBMODULES ""
+)
+
+# Fetch dependancy: rapidjson
+set(RAPIDJSON_BUILD_DOC OFF)
+set(RAPIDJSON_BUILD_TESTS OFF)
+set(RAPIDJSON_BUILD_EXAMPLES OFF)
+FetchContent_Declare(
+    rapidjson
+    GIT_REPOSITORY https://github.com/Tencent/rapidjson.git
+    GIT_TAG        v1.1.0
 )
 
 FetchContent_MakeAvailable(Catch2)
@@ -44,6 +56,12 @@ FetchContent_MakeAvailable(spdlog)
 FetchContent_MakeAvailable(zenoh-cpp)
 FetchContent_MakeAvailable(uWebSockets_content)
 FetchContent_MakeAvailable(uSockets_content)
+FetchContent_MakeAvailable(rapidjson)
+
+add_library(rapidjsonheaderonly INTERFACE)
+target_include_directories(rapidjsonheaderonly INTERFACE "$<BUILD_INTERFACE:${rapidjson_SOURCE_DIR}/include>"
+    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
+)
 
 find_package(ZLIB REQUIRED)
 

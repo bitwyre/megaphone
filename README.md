@@ -5,3 +5,10 @@ Megaphone is a tool used at Bitwyre for passing messages from the matching engin
 # How does it work?
 
 --TODO--
+
+# TODO
+
+- Get to a working condition
+- Add docs
+- Add tests
+- Add benchmarks
