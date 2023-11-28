@@ -22,8 +22,6 @@ public:
 
 	auto run() -> void;
 
-	auto publish(const std::string_view p_broadcast, const std::string_view message) -> void;
-
 private:
 	/* ws->getUserData returns one of these */
 	struct PerSocketData {

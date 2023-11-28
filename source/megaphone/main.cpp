@@ -1,29 +1,42 @@
-#include <libphone.hpp>
+#include <iostream>
 
-#include "serializer/serializer.hpp"
+//
+// zenoh.hxx automatically selects zenoh-c or zenoh-pico C++ wrapper
+// depending on ZENOHCXX_ZENOHPICO or ZENOHCXX_ZENOHC setting
+// and places it to the zenoh namespace
+//
+#include <iostream>
 
-auto main() -> int {
+#include "zenoh.hxx"
 
-	// Create an instance of the data structures
-	LibPhone::Serializer::DepthL2Message message {};
+using namespace zenoh;
 
-	message.table = "depthL2";
-	message.action = "snapshot";
+class CustomerClass {
+public:
+	CustomerClass(CustomerClass&&) = delete;
+	CustomerClass(const CustomerClass&) = delete;
+	CustomerClass& operator=(const CustomerClass&) = delete;
+	CustomerClass& operator=(CustomerClass&&) = delete;
 
-	message.data.instrument = "usdt_jidr_spot";
-	message.data.sequence = 2913539096;
-	message.data.is_frozen = false;
+	CustomerClass(Session& session, const KeyExprView& keyexpr) : pub(nullptr) {
+		pub = expect<Publisher>(session.declare_publisher(keyexpr));
+	}
 
-	message.data.bids.push_back({15862.000000, 2.420000});
-	message.data.bids.push_back({15861.000000, 2.080000});
+	void put(const BytesView& value) { pub.put(value); }
 
-	message.data.asks.push_back({15879.000000, 2.320000});
-	message.data.asks.push_back({15892.000000, 2.020000});
+private:
+	Publisher pub;
+};
 
-	LibPhone::Serializer serializer {};
-
-	std::cout << serializer.sz_depthl2message(std::move(message)) << std::endl;
-
-	// LibPhone::Phone p {};
-	// p.run();
+int main(int, char**) {
+	try {
+		Config config;
+		auto session = expect<Session>(open(std::move(config)));
+		std::string keyexpr = "demo/example/simple";
+		std::string value = "Simple!";
+		CustomerClass customer(session, keyexpr);
+		customer.put(value);
+	} catch (ErrorMessage e) {
+		std::cout << "Error: " << e.as_string_view() << std::endl;
+	}
 }

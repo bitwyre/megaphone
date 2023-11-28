@@ -27,7 +27,7 @@ set(COMPILER_FLAGS
     # All the warnings
     -Wall -Wextra
     # Except for the ones that aren't mine
-    -Wno-deprecated -Wno-unused-parameter
+    -Wno-deprecated -Wno-unused-parameter -Wno-deprecated-declarations
     # Add asan options
     -fsanitize=address -fsanitize=pointer-compare
     -fsanitize=pointer-subtract -fsanitize=float-divide-by-zero
@@ -46,9 +46,15 @@ target_link_options(phone PUBLIC ${COMPILER_FLAGS})
 target_include_directories(megaphone PUBLIC source/megaphone)
 target_include_directories(phone PUBLIC source/libphone)
 
-# Link libphone to the megaphone exec
-target_link_libraries(phone PUBLIC uWebSockets spdlog::spdlog rapidjsonheaderonly)
-target_link_libraries(megaphone PUBLIC phone spdlog::spdlog rapidjsonheaderonly)
+# Link all the libs to each other
+
+target_link_libraries(phone
+    PUBLIC uWebSockets
+    PUBLIC spdlog::spdlog
+    PUBLIC rapidjson
+    PUBLIC zenohcxx::zenohc::lib
+)
+target_link_libraries(megaphone PUBLIC phone)
 
 # Turn clang-tidy off/on
 if (USE_CLANG_TIDY)
@@ -69,8 +75,8 @@ endif()
 file(GLOB_RECURSE TESTS_SOURCES
     tests/*.cpp
 )
-add_executable(tests ${TESTS_SOURCES})
-target_link_libraries(tests
+add_executable(phonetests ${TESTS_SOURCES})
+target_link_libraries(phonetests
     PRIVATE Catch2::Catch2WithMain
     PRIVATE phone
 )
