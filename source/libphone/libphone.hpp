@@ -1,6 +1,7 @@
 #pragma once
 
 #include "App.h"
+#include <set>
 
 constexpr auto PORT = 9001;
 
@@ -9,7 +10,7 @@ namespace LibPhone {
 class Phone {
 public:
 	Phone();
-	~Phone() = default;
+	~Phone();
 
 	Phone(const Phone&) = delete;
 	Phone(Phone&&) noexcept = delete;
@@ -19,15 +20,19 @@ public:
 
 	auto run() -> void;
 
-	auto get_app() noexcept -> uWS::App&;
+	auto publish(const std::string_view p_broadcast, const std::string_view message) -> void;
 
 private:
 	/* ws->getUserData returns one of these */
 	struct PerSocketData {
 		/* Fill with user data */
+		std::string topic {""};
+		int user {0};
 	};
-
 	uWS::App m_app;
+
+	std::vector<std::string> m_all_topics {"bnb_usdt_spot", "busd_usd_spot"};
+	int users;
 };
 
 } // namespace LibPhone
