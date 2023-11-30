@@ -1,0 +1,29 @@
+namespace Bitwyre.Flatbuffers.Depthl2;
+
+struct AskPrice {
+  price: float64;
+  qty: float64;
+}
+
+struct BidPrice {
+  price: float64;
+  qty: float64;
+}
+
+table Data {
+    asks: [AskPrice];
+    bids: [BidPrice];
+}
+
+table DepthEvent{
+    instrument: string;
+    timestamp: uint64;
+    depth: Data;
+}
+
+table DepthEventMessage {
+    depth_event: DepthEvent;
+    level: uint8;
+}
+
+root_type DepthEventMessage;

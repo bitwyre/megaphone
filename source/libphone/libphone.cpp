@@ -37,8 +37,10 @@ Phone::Phone() : m_app(uWSAppWrapper({.passphrase = "1234"})), m_serializer(this
 
 	loop->addPostHandler(nullptr, [&](uWS::Loop*) {
 		// TODO: Change with respect to ME
+
 		for (auto& topic : this->m_supported_instruments) {
-			this->m_app.publish(topic, topic, uWS::OpCode::BINARY, false);
+			for (auto& action : {"trades:", "depthl2:"})
+				this->m_app.publish(action + topic, "topic", uWS::OpCode::BINARY, false);
 		}
 	});
 

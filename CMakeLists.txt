@@ -43,18 +43,20 @@ target_compile_options(phone PUBLIC ${COMPILER_FLAGS})
 target_link_options(phone PUBLIC ${COMPILER_FLAGS})
 
 # Add include dirs
-target_include_directories(megaphone PUBLIC source/megaphone)
-target_include_directories(phone PUBLIC source/libphone)
+target_include_directories(megaphone PUBLIC source/megaphone source/flatbuffers/generated)
+target_include_directories(phone PUBLIC source/libphone source/flatbuffers/generated)
 
 # Link all the libs to each other
-
 target_link_libraries(phone
     PUBLIC uWebSockets
     PUBLIC spdlog::spdlog
     PUBLIC rapidjson
     PUBLIC zenohcxx::zenohpico
+    PUBLIC flatbuffers
 )
 target_link_libraries(megaphone PUBLIC phone)
+
+
 
 # Turn clang-tidy off/on
 if (USE_CLANG_TIDY)

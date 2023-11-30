@@ -56,6 +56,14 @@ FetchContent_Declare(
     GIT_SUBMODULES ""
 )
 
+# Fetch dependancy: flatbuffers
+set(FLATBUFFERS_BUILD_FLATC OFF)
+FetchContent_Declare(
+    flatbuffers
+    GIT_REPOSITORY https://github.com/google/flatbuffers
+    GIT_TAG        v23.5.26
+)
+
 # Fetch dependancy: rapidjson
 set(RAPIDJSON_BUILD_DOC OFF)
 set(RAPIDJSON_BUILD_TESTS OFF)
@@ -73,7 +81,9 @@ FetchContent_MakeAvailable(zenohpico_backend)
 FetchContent_MakeAvailable(cpp_wrapper)
 FetchContent_MakeAvailable(uWebSockets_content)
 FetchContent_MakeAvailable(uSockets_content)
+FetchContent_MakeAvailable(flatbuffers)
 FetchContent_GetProperties(rapidjson)
+
 
 find_package(ZLIB REQUIRED)
 

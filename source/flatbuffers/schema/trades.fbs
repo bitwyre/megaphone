@@ -1,0 +1,12 @@
+namespace Bitwyre.Flatbuffers.trades;
+
+table trades {
+    price: float64;
+    qty: float64;
+    value: float64;
+    tradeType: bool;
+    symbol: string;
+    timestamp: uint64;
+} 
+
+root_type trades;

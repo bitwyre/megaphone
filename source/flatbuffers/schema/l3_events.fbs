@@ -1,0 +1,14 @@
+namespace Bitwyre.Flatbuffers.L3Event;
+
+table L3Event {
+    price: float64;
+    qty: float64;
+    side: bool;
+    symbol: string;
+    sequence: uint64;
+    type: uint8;
+    order_id: string;
+    timestamp: uint64;
+} 
+
+root_type L3Event;
