@@ -11,7 +11,19 @@ using namespace std::literals;
 
 namespace utils {
 
-auto trim(std::string_view in) -> std::string_view;
+constexpr auto trim(const std::string_view in) -> std::string_view {
+	auto left = in.begin();
+	for (;; ++left) {
+		if (left == in.end())
+			return std::string_view();
+		if (!isspace(*left))
+			break;
+	}
+	auto right = in.end() - 1;
+	for (; right > left && isspace(*right); --right)
+		;
+	return std::string_view(left, std::distance(left, right) + 1);
+}
 
 template <typename K, typename V, std::size_t N> struct ConstexprMap {
 	using key_type = K;

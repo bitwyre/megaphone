@@ -44,7 +44,7 @@ private:
 
 	uWSAppWrapper m_app;
 
-	std::vector<std::string> m_supported_instruments {"bnb_usdt_spot", "busd_usd_spot"};
+	const std::vector<std::string> m_supported_instruments;
 	int users;
 
 	Serializer m_serializer;

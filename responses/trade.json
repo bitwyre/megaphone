@@ -27,3 +27,32 @@
         ]
     }
 }
+
+{
+    "table": "depthL2",
+    "action": "snapshot",
+    "data": {
+        "instrument": "usdt_jidr_spot",
+        "sequence": 2913539096,
+        "bids": [
+            {
+                "price": 1.21,
+                "qty": 8.0
+            },
+            {
+                "price": 1.2,
+                "qty": 12.0
+            }
+        ],
+        "asks": [
+            {
+                "price": 1.23,
+                "qty": 10.0
+            },
+            {
+                "price": 1.24,
+                "qty": 15.0
+            }
+        ]
+    }
+}

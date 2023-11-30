@@ -5,7 +5,10 @@
 #include <iostream>
 
 namespace LibPhone {
-Phone::Phone() : m_app(uWSAppWrapper({.passphrase = "1234"})), m_serializer(this->m_supported_instruments) {
+Phone::Phone()
+	: m_app(uWSAppWrapper({.passphrase = "1234"})),
+	  m_supported_instruments({"bnb_usdt_spot", "busd_usd_spot"}),
+	  m_serializer(this->m_supported_instruments) {
 
 	this->m_app.ws<PerSocketData>(
 		"/*",

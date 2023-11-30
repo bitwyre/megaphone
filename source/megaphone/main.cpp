@@ -2,11 +2,7 @@
 #include <libphone.hpp>
 
 #include "depthl2_generated.h"
-#include "flatbuffers/flatbuffers.h"
-#include "flatbuffers/idl.h"
-#include "flatbuffers/minireflect.h"
-#include "flatbuffers/table.h"
-#include "flatbuffers/util.h"
+#include "fbhandler/fbhandler.hpp"
 
 auto main() -> int {
 	flatbuffers::FlatBufferBuilder builder;
@@ -23,20 +19,17 @@ auto main() -> int {
 		builder, builder.CreateString("usdt_jidr_spot"), 2913539096, false, builder.CreateVector(bids_vector),
 		builder.CreateVector(asks_vector));
 
-	// Create DepthEvent
-	auto depthEvent = Bitwyre::Flatbuffers::Depthl2::CreateDepthEvent(builder, builder.CreateString("depthL2"),
-																	  builder.CreateString("snapshot"), depth_data);
+	auto depth_event = Bitwyre::Flatbuffers::Depthl2::CreateDepthEvent(builder, builder.CreateString("depthL2"),
+																	   builder.CreateString("snapshot"), depth_data);
 
-	builder.Finish(depthEvent);
+	builder.Finish(depth_event);
 
 	const uint8_t* buffer = builder.GetBufferPointer();
-	int size = builder.GetSize();
+	// int size = builder.GetSize();
 
-	const flatbuffers::TypeTable* typeTable = Bitwyre::Flatbuffers::Depthl2::DepthEventTypeTable();
-	std::string jsonString = flatbuffers::FlatBufferToString(buffer, typeTable);
-
-	// Print or use the JSON string as needed
-	std::cout << jsonString << std::endl;
+	LibPhone::FBHandler fbh {};
+	std::cout << fbh.flatbuf_to_json<Bitwyre::Flatbuffers::Depthl2::DepthEvent>(reinterpret_cast<const char*>(buffer))
+			  << std::endl;
 
 	return 0;
 }
