@@ -8,58 +8,23 @@ namespace LibPhone {
 Phone::Phone() : m_app(uWS::App({.passphrase = "1234"})) {
 
 	this->m_app.ws<PerSocketData>(
-		"/*", {.compression = uWS::SHARED_COMPRESSOR,
-			   .maxPayloadLength = 16 * 1024 * 1024,
-			   .idleTimeout = 16,
-			   .maxBackpressure = 1 * 1024 * 1024,
-			   .closeOnBackpressureLimit = false,
-			   .resetIdleTimeoutOnSend = false,
-			   .sendPingsAutomatically = true,
-			   /* Handlers */
-			   .upgrade = nullptr,
-			   .open =
-				   [this](auto* ws) {
-					   /* Open event here, you may access ws->getUserData() which points to a
-						* PerSocketData struct */
-					   PerSocketData* perSocketData = (PerSocketData*)ws->getUserData();
-					   perSocketData->user = this->users++;
-				   },
-			   .message =
-				   [this](auto* ws, std::string_view message, uWS::OpCode opCode) {
-					   PerSocketData* perSocketData = (PerSocketData*)ws->getUserData();
-
-					   auto trimmed_msg = utils::trim(message);
-					   bool topic_exists = std::find(this->m_all_topics.begin(), this->m_all_topics.end(),
-													 trimmed_msg) != this->m_all_topics.end();
-
-					   if (topic_exists) {
-
-						   perSocketData->topic = trimmed_msg;
-						   ws->subscribe(trimmed_msg);
-
-						   SPDLOG_INFO("user {} has subscribed to topic {}", perSocketData->user, perSocketData->topic);
-
-					   } else {
-						   // return error
-						   SPDLOG_ERROR("Topic {} does not exist", trimmed_msg);
-					   }
-				   },
-			   .drain =
-				   [](auto* /*ws*/) {
-					   /* Check ws->getBufferedAmount() here */
-				   },
-			   .ping =
-				   [](auto* /*ws*/, std::string_view) {
-					   /* Not implemented yet */
-				   },
-			   .pong =
-				   [](auto* /*ws*/, std::string_view) {
-					   /* Not implemented yet */
-				   },
-			   .close =
-				   [](auto* /*ws*/, int /*code*/, std::string_view /*message*/) {
-					   /* You may access ws->getUserData() here */
-				   }});
+		"/*",
+		{.compression = uWS::SHARED_COMPRESSOR,
+		 .maxPayloadLength = 16 * 1024 * 1024,
+		 .idleTimeout = 16,
+		 .maxBackpressure = 1 * 1024 * 1024,
+		 .closeOnBackpressureLimit = false,
+		 .resetIdleTimeoutOnSend = false,
+		 .sendPingsAutomatically = true,
+		 /* Handlers */
+		 .upgrade = nullptr,
+		 .open = [this](auto* ws) {},
+		 .message = [this](auto* ws, std::string_view message,
+						   uWS::OpCode opCode) { this->on_ws_message(ws, message, opCode); },
+		 .drain = [this](auto* ws) { this->on_ws_drain(ws); },
+		 .ping = [this](auto* ws, std::string_view message) { this->on_ws_ping(ws, message); },
+		 .pong = [this](auto* ws, std::string_view message) { this->on_ws_pong(ws, message); },
+		 .close = [this](auto* ws, int code, std::string_view message) { this->on_ws_close(ws, code, message); }});
 
 	auto* loop = uWS::Loop::get();
 
@@ -86,5 +51,40 @@ Phone::Phone() : m_app(uWS::App({.passphrase = "1234"})) {
 Phone::~Phone() { uWS::Loop::get()->free(); }
 
 auto Phone::run() -> void { this->m_app.run(); }
+
+auto Phone::on_ws_open(uWSWebSocket* ws) -> void {
+	/* Open event here, you may access ws->getUserData() which points to a
+	 * PerSocketData struct */
+	PerSocketData* perSocketData = (PerSocketData*)ws->getUserData();
+	perSocketData->user = this->users++;
+}
+
+auto Phone::on_ws_message(uWSWebSocket* ws, std::string_view message, uWS::OpCode opCode) -> void {
+	PerSocketData* perSocketData = (PerSocketData*)ws->getUserData();
+
+	auto trimmed_msg = utils::trim(message);
+	bool topic_exists =
+		std::find(this->m_all_topics.begin(), this->m_all_topics.end(), trimmed_msg) != this->m_all_topics.end();
+
+	if (topic_exists) {
+
+		perSocketData->topic = trimmed_msg;
+		ws->subscribe(trimmed_msg);
+
+		SPDLOG_INFO("user {} has subscribed to topic {}", perSocketData->user, perSocketData->topic);
+
+	} else {
+		// return error
+		SPDLOG_ERROR("Topic {} does not exist", trimmed_msg);
+	}
+}
+
+auto Phone::on_ws_drain(uWSWebSocket* ws) noexcept -> void { }
+
+auto Phone::on_ws_ping(uWSWebSocket* ws, std::string_view message) noexcept -> void { }
+
+auto Phone::on_ws_pong(uWSWebSocket* ws, std::string_view message) noexcept -> void { }
+
+auto Phone::on_ws_close(uWSWebSocket* ws, int code, std::string_view message) noexcept -> void { }
 
 } // namespace LibPhone

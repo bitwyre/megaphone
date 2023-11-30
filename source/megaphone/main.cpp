@@ -6,6 +6,7 @@
 // and places it to the zenoh namespace
 //
 #include "zenohpico.hxx"
+#include <cstddef>
 #include <iostream>
 
 class CustomerClass {
@@ -32,7 +33,10 @@ int main(int, char**) {
 		std::string keyexpr = "demo/example/simple";
 		std::string value = "Simple!";
 		CustomerClass customer(session, keyexpr);
-		customer.put(value);
+		uint64_t counter {};
+		while (true) {
+			customer.put(value + std::to_string(counter++));
+		}
 	} catch (zenohpico::ErrorMessage e) {
 		std::cout << "Error: " << e.as_string_view() << std::endl;
 	}
