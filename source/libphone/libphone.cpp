@@ -1,14 +1,22 @@
 #include "libphone.hpp"
 #include "utils/utils.hpp"
 
-#include "spdlog/spdlog.h"
-#include <iostream>
-
 namespace LibPhone {
-Phone::Phone()
+Phone::Phone(zenohc::Session& session)
 	: m_app(uWSAppWrapper({.passphrase = "1234"})),
 	  m_supported_instruments({"bnb_usdt_spot", "busd_usd_spot"}),
-	  m_serializer(this->m_supported_instruments) {
+	  m_serializer(this->m_supported_instruments),
+	  m_zenoh_subscriber(nullptr) {
+
+	this->m_zenoh_subscriber = zenohc::expect<zenohc::Subscriber>(
+		session.declare_subscriber("demo/example/zenoh-python-pub", [&](const zenohc::Sample& sample) {
+			// auto str = std::string(sample.get_payload().as_string_view());
+			// std::cout << str << std::endl;
+			//  FBHandler::flatbuf_to_json<Bitwyre::Flatbuffers::Depthl2::DepthEvent>(str);
+
+			std::string str {sample.get_payload().as_string_view()};
+			this->m_zenoh_queue.push(str);
+		}));
 
 	this->m_app.ws<PerSocketData>(
 		"/*",
@@ -38,10 +46,19 @@ Phone::Phone()
 	us_timer_set(
 		delay_timer, [](struct us_timer_t*) {}, 1, 1);
 
-	loop->addPostHandler(nullptr, [&](uWS::Loop*) {
-		for (auto& topic : this->m_supported_instruments) {
-			for (auto& action : {"trades:", "depthl2:"})
-				this->m_app.publish(action + topic, action + topic, uWS::OpCode::BINARY, false);
+	loop->addPreHandler(nullptr, [&](uWS::Loop*) {
+		// for (auto& topic : this->m_supported_instruments) {
+		// 	for (auto& action : {"trades:", "depthl2:"})
+		// 		this->m_app.publish(action + topic, action + topic, uWS::OpCode::BINARY, false);
+		// }
+		while (this->m_zenoh_queue.size() > 0 && this->m_zenoh_queue.front()) {
+
+			// std::cout << *this->m_zenoh_queue.front() << std::endl;
+			this->m_app.publish(
+				"depthl2:bnb_usdt_spot",
+				FBHandler::flatbuf_to_json<Bitwyre::Flatbuffers::Depthl2::DepthEvent>(*this->m_zenoh_queue.front()),
+				uWS::OpCode::BINARY, false);
+			this->m_zenoh_queue.pop();
 		}
 	});
 

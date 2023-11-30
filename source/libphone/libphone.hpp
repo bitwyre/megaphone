@@ -1,10 +1,15 @@
 #pragma once
 
-#include "serializer/serializer.hpp"
-#include <spdlog/spdlog.h>
-
 #include "App.h"
 #include <set>
+#include <spdlog/spdlog.h>
+#include <zenohc.hxx>
+
+#include <iostream>
+
+#include "SPSCQueue.h"
+#include "fbhandler/fbhandler.hpp"
+#include "serializer/serializer.hpp"
 
 constexpr auto PORT = 9001;
 
@@ -12,7 +17,7 @@ namespace LibPhone {
 
 class Phone {
 public:
-	Phone();
+	explicit Phone(zenohc::Session& session);
 	~Phone();
 
 	Phone(const Phone&) = delete;
@@ -45,11 +50,19 @@ private:
 	uWSAppWrapper m_app;
 
 	const std::vector<std::string> m_supported_instruments;
-	int users;
+	int users {0};
 
 	Serializer m_serializer;
 
+	zenohc::Subscriber m_zenoh_subscriber;
+
+	LibPhone::FBHandler m_fbh;
+
+	rigtorp::SPSCQueue<std::string> m_zenoh_queue {1000000};
+
 private: // Private block for WS functions
+	auto zenoh_callback(const zenohc::Sample& sample) -> void;
+
 	/**
 	 * @brief Called when a WebSocket connection is opened.
 	 *

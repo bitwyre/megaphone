@@ -29,7 +29,7 @@ public:
 	FBHandler operator=(FBHandler&&) noexcept = delete;
 
 	template <typename FlatBufType>
-	[[nodiscard]] constexpr auto flatbuf_to_json(const std::string_view flatbuf) noexcept -> std::string {
+	[[nodiscard]] static constexpr auto flatbuf_to_json(const std::string& flatbuf) noexcept -> std::string {
 		const flatbuffers::TypeTable* type_table = nullptr;
 
 		if constexpr (std::is_same_v<FlatBufType, Bitwyre::Flatbuffers::Depthl2::DepthEvent>)
@@ -43,7 +43,7 @@ public:
 		else
 			static_assert(always_false_v<FlatBufType>, "This type is unsupported!");
 
-		return flatbuffers::FlatBufferToString(reinterpret_cast<const uint8_t*>(flatbuf.data()), type_table);
+		return flatbuffers::FlatBufferToString(reinterpret_cast<const uint8_t*>(flatbuf.c_str()), type_table);
 	}
 
 private:

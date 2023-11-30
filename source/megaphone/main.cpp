@@ -4,21 +4,23 @@
 #include <spdlog/spdlog.h>
 #include <zenohc.hxx>
 
-using namespace zenohc;
-
 auto main(int argc, char** argv) -> int {
 
 	zenohc::Config config;
-	config = expect(config_from_file(argv[1]));
+	config = zenohc::expect(zenohc::config_from_file(argv[1]));
 
-	auto session = expect<zenohc::Session>(open(std::move(config)));
+	auto session = zenohc::expect<zenohc::Session>(zenohc::open(std::move(config)));
 
-	auto subscriber = expect<Subscriber>(session.declare_subscriber("demo/example/*", [](const Sample& sample) {
-		std::cout << sample.get_payload().as_string_view() << '\t'
-				  << sample.get_encoding().get_suffix().as_string_view() << std::endl;
-	}));
+	// auto subscriber = expect<Subscriber>(session.declare_subscriber("demo/example/*", [](const Sample& sample) {
+	// 	std::cout << sample.get_payload().as_string_view() << '\t'
+	// 			  << sample.get_encoding().get_suffix().as_string_view() << std::endl;
+	// }));
 
-	// Wait for a key press to exit
-	auto c = getchar();
+	// // Wait for a key press to exit
+	// auto c = getchar();
+
+	LibPhone::Phone phone {session};
+	phone.run();
+
 	return 0;
 }
