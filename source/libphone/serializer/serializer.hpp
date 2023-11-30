@@ -34,12 +34,26 @@ public:
 		Data data;
 	};
 
-	// TODO: Implement this function
-	// such that it takes in a flatbuffer and returns
-	// a fully populated DepthL2Message object.
-	[[nodiscard]] auto dsz_depthl2message() -> DepthL2Message;
-	[[nodiscard]] auto sz_depthl2message(DepthL2Message&& message) -> std::string;
+	struct MegaphoneRequest {
+		enum class Operations { SUBSCRIBE, NO_OP };
+		enum class RequestType {
+			L3EVENTS,
+			L2EVENTS,
+			TRADE,
+			DEPTHL2,
+			DEPTHL2_10,
+			DEPTHL2_25,
+			DEPTHL2_50,
+			DEPTHL2_100,
+			NO_REQ
+		};
 
+		Operations operation {Operations::NO_OP};
+		RequestType type {RequestType::NO_REQ};
+		std::string instrument {};
+	};
+
+public: // Methods
 	Serializer()
 		: m_document(),
 		  m_buffer(),
@@ -48,6 +62,14 @@ public:
 		  m_data(kObjectType),
 		  m_bids(kArrayType),
 		  m_asks(kArrayType) { }
+
+	// TODO: Implement this function
+	// such that it takes in a flatbuffer and returns
+	// a fully populated DepthL2Message object.
+	[[nodiscard]] auto dsz_depthl2message() -> DepthL2Message;
+	[[nodiscard]] auto sz_depthl2message(DepthL2Message&& message) -> std::string;
+
+	[[nodiscard]] auto parse_request(std::string_view request) -> MegaphoneRequest;
 
 private:
 	Document m_document;

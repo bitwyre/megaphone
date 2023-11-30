@@ -78,7 +78,6 @@ auto Phone::on_ws_message(uWSWebSocket* ws, std::string_view message, uWS::OpCod
 		SPDLOG_ERROR("Topic {} does not exist", trimmed_msg);
 	}
 }
-
 auto Phone::on_ws_drain(uWSWebSocket* ws) noexcept -> void { }
 
 auto Phone::on_ws_ping(uWSWebSocket* ws, std::string_view message) noexcept -> void { }

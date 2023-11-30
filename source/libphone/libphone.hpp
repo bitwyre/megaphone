@@ -49,8 +49,7 @@ private:
 
 	Serializer m_serializer;
 
-	// Private block for functions
-private:
+private: // Private block for WS functions
 	/**
 	 * @brief Called when a WebSocket connection is opened.
 	 *

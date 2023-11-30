@@ -1,4 +1,5 @@
 #include "serializer.hpp"
+#include <spdlog/spdlog.h>
 
 namespace LibPhone {
 
@@ -13,12 +14,12 @@ auto Serializer::clear_fields() -> void {
 
 	this->m_bids.Swap(Value(kArrayType).Move());
 	this->m_asks.Swap(Value(kArrayType).Move());
+
+	this->m_document.SetObject();
 }
 
 [[nodiscard]] auto Serializer::sz_depthl2message(DepthL2Message&& message) -> std::string {
 	this->clear_fields();
-
-	this->m_document.SetObject();
 
 	this->m_document.AddMember("table", this->m_table, this->m_document.GetAllocator());
 	this->m_document.AddMember("action", this->m_action, this->m_document.GetAllocator());
@@ -56,10 +57,71 @@ auto Serializer::clear_fields() -> void {
 }
 
 [[nodiscard]] auto Serializer::dsz_depthl2message() -> DepthL2Message {
+	this->clear_fields();
+
 	throw std::logic_error("Attempt to call un-implemented function: Serializer::dsz_depthl2message");
 
 	// Just reutrn an empty object for now
 	// so that the compiler doesn't scream.
 	return DepthL2Message {};
 }
+
+[[nodiscard]] auto Serializer::parse_request(std::string_view request) -> MegaphoneRequest {
+	this->clear_fields();
+
+	this->m_document.Parse(request.data());
+
+	if (this->m_document.HasParseError()) {
+		SPDLOG_ERROR("Error parsing JSON request");
+		return {};
+	}
+
+	auto result = MegaphoneRequest {};
+	if (this->m_document.HasMember("op") && this->m_document["op"].IsString()) {
+		std::string_view operation = this->m_document["op"].GetString();
+		if (operation == "subscribe") {
+			result.operation = MegaphoneRequest::Operations::SUBSCRIBE;
+		}
+	} else {
+		SPDLOG_ERROR("Missing or invalid 'op' field in the JSON request");
+		return result;
+	}
+
+	if (this->m_document.HasMember("type") && this->m_document["type"].IsString()) {
+		std::string_view request_type = this->m_document["type"].GetString();
+
+		if (request_type == "l3events") {
+			result.type = MegaphoneRequest::RequestType::L3EVENTS;
+		} else if (request_type == "l2events") {
+			result.type = MegaphoneRequest::RequestType::L2EVENTS;
+		} else if (request_type == "trade") {
+			result.type = MegaphoneRequest::RequestType::TRADE;
+		} else if (request_type == "depthl2") {
+			result.type = MegaphoneRequest::RequestType::DEPTHL2;
+		} else if (request_type == "depthl2_10") {
+			result.type = MegaphoneRequest::RequestType::DEPTHL2_10;
+		} else if (request_type == "depthl2_25") {
+			result.type = MegaphoneRequest::RequestType::DEPTHL2_25;
+		} else if (request_type == "depthl2_50") {
+			result.type = MegaphoneRequest::RequestType::DEPTHL2_50;
+		} else if (request_type == "depthl2_100") {
+			result.type = MegaphoneRequest::RequestType::DEPTHL2_100;
+		} else {
+			result.type = MegaphoneRequest::RequestType::NO_REQ;
+		}
+	} else {
+		SPDLOG_ERROR("Missing or invalid 'type' field in the JSON request");
+		return result;
+	}
+
+	if (this->m_document.HasMember("instrument") && this->m_document["instrument"].IsString()) {
+		result.instrument = this->m_document["instrument"].GetString();
+	} else {
+		SPDLOG_ERROR("Missing or invalid 'instrument' field in the JSON request");
+		return result;
+	}
+
+	return result;
+}
+
 } // namespace LibPhone

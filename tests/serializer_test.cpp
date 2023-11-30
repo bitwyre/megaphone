@@ -27,3 +27,16 @@ TEST_CASE("The JSON serializer is tested", "[JSON_SZ]") {
 
 	REQUIRE(result == expected_result);
 }
+
+TEST_CASE("The JSON request parser function is tested", "[JSON_REQ_PARSER]") {
+	std::string_view req = R"({"op" : "subscribe", "type" : "trade", "instrument" : "btc_usdx_futures_perp"})";
+
+	LibPhone::Serializer sz {};
+	auto res = sz.parse_request(req);
+
+	using MegaphoneRequest = LibPhone::Serializer::MegaphoneRequest;
+
+	REQUIRE(res.operation == MegaphoneRequest::Operations::SUBSCRIBE);
+	REQUIRE(res.type == MegaphoneRequest::RequestType::TRADE);
+	REQUIRE(res.instrument == "btc_usdx_futures_perp");
+}
