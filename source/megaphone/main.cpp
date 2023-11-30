@@ -2,28 +2,41 @@
 #include <libphone.hpp>
 
 #include "depthl2_generated.h"
+#include "flatbuffers/flatbuffers.h"
+#include "flatbuffers/idl.h"
+#include "flatbuffers/minireflect.h"
+#include "flatbuffers/table.h"
+#include "flatbuffers/util.h"
 
 auto main() -> int {
 	flatbuffers::FlatBufferBuilder builder;
 
-	std::vector<Bitwyre::Flatbuffers::Depthl2::AskPrice> asks {Bitwyre::Flatbuffers::Depthl2::AskPrice(10000.0, 1.0),
-															   Bitwyre::Flatbuffers::Depthl2::AskPrice(10100.0, 2.0)};
-	std::vector<Bitwyre::Flatbuffers::Depthl2::BidPrice> bids {Bitwyre::Flatbuffers::Depthl2::BidPrice(9900.0, 1.5),
-															   Bitwyre::Flatbuffers::Depthl2::BidPrice(9800.0, 0.5)};
+	std::vector<flatbuffers::Offset<Bitwyre::Flatbuffers::Depthl2::AskPrice>> asks_vector {
+		Bitwyre::Flatbuffers::Depthl2::CreateAskPrice(builder, 1.23, 10.0),
+		Bitwyre::Flatbuffers::Depthl2::CreateAskPrice(builder, 1.24, 15.0)};
 
-	auto depth_data = Bitwyre::Flatbuffers::Depthl2::CreateDataDirect(builder, &asks, &bids);
-	auto depth_event = Bitwyre::Flatbuffers::Depthl2::CreateDepthEventDirect(builder, "BTC/USD", 123456789, depth_data);
-	auto depth_event_message = Bitwyre::Flatbuffers::Depthl2::CreateDepthEventMessage(builder, depth_event, 3);
+	std::vector<flatbuffers::Offset<Bitwyre::Flatbuffers::Depthl2::BidPrice>> bids_vector {
+		Bitwyre::Flatbuffers::Depthl2::CreateBidPrice(builder, 1.21, 8.0),
+		Bitwyre::Flatbuffers::Depthl2::CreateBidPrice(builder, 1.20, 12.0)};
 
-	builder.Finish(depth_event_message);
+	auto depth_data = Bitwyre::Flatbuffers::Depthl2::CreateDepthData(
+		builder, builder.CreateString("usdt_jidr_spot"), 2913539096, false, builder.CreateVector(bids_vector),
+		builder.CreateVector(asks_vector));
 
-	uint8_t* buffer_data = builder.GetBufferPointer();
+	// Create DepthEvent
+	auto depthEvent = Bitwyre::Flatbuffers::Depthl2::CreateDepthEvent(builder, builder.CreateString("depthL2"),
+																	  builder.CreateString("snapshot"), depth_data);
 
-	auto deserialized_depth_event_message = Bitwyre::Flatbuffers::Depthl2::GetDepthEventMessage(buffer_data);
+	builder.Finish(depthEvent);
 
-	std::cout << "Instrument: " << deserialized_depth_event_message->depth_event()->instrument()->c_str() << std::endl;
-	std::cout << "Timestamp: " << deserialized_depth_event_message->depth_event()->timestamp() << std::endl;
-	std::cout << "Level: " << static_cast<int>(deserialized_depth_event_message->level()) << std::endl;
+	const uint8_t* buffer = builder.GetBufferPointer();
+	int size = builder.GetSize();
+
+	const flatbuffers::TypeTable* typeTable = Bitwyre::Flatbuffers::Depthl2::DepthEventTypeTable();
+	std::string jsonString = flatbuffers::FlatBufferToString(buffer, typeTable);
+
+	// Print or use the JSON string as needed
+	std::cout << jsonString << std::endl;
 
 	return 0;
 }

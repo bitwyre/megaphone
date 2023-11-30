@@ -20,9 +20,14 @@ namespace L3Event {
 struct L3Event;
 struct L3EventBuilder;
 
+inline const ::flatbuffers::TypeTable *L3EventTypeTable();
+
 struct L3Event FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   typedef L3EventBuilder Builder;
   struct Traits;
+  static const ::flatbuffers::TypeTable *MiniReflectTypeTable() {
+    return L3EventTypeTable();
+  }
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
     VT_PRICE = 4,
     VT_QTY = 6,
@@ -56,18 +61,6 @@ struct L3Event FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   }
   uint64_t timestamp() const {
     return GetField<uint64_t>(VT_TIMESTAMP, 0);
-  }
-  template<size_t Index>
-  auto get_field() const {
-         if constexpr (Index == 0) return price();
-    else if constexpr (Index == 1) return qty();
-    else if constexpr (Index == 2) return side();
-    else if constexpr (Index == 3) return symbol();
-    else if constexpr (Index == 4) return sequence();
-    else if constexpr (Index == 5) return type();
-    else if constexpr (Index == 6) return order_id();
-    else if constexpr (Index == 7) return timestamp();
-    else static_assert(Index != Index, "Invalid Field Index");
   }
   bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
@@ -149,21 +142,6 @@ inline ::flatbuffers::Offset<L3Event> CreateL3Event(
 struct L3Event::Traits {
   using type = L3Event;
   static auto constexpr Create = CreateL3Event;
-  static constexpr auto name = "L3Event";
-  static constexpr auto fully_qualified_name = "Bitwyre.Flatbuffers.L3Event.L3Event";
-  static constexpr size_t fields_number = 8;
-  static constexpr std::array<const char *, fields_number> field_names = {
-    "price",
-    "qty",
-    "side",
-    "symbol",
-    "sequence",
-    "type",
-    "order_id",
-    "timestamp"
-  };
-  template<size_t Index>
-  using FieldType = decltype(std::declval<type>().get_field<Index>());
 };
 
 inline ::flatbuffers::Offset<L3Event> CreateL3EventDirect(
@@ -188,6 +166,33 @@ inline ::flatbuffers::Offset<L3Event> CreateL3EventDirect(
       type,
       order_id__,
       timestamp);
+}
+
+inline const ::flatbuffers::TypeTable *L3EventTypeTable() {
+  static const ::flatbuffers::TypeCode type_codes[] = {
+    { ::flatbuffers::ET_DOUBLE, 0, -1 },
+    { ::flatbuffers::ET_DOUBLE, 0, -1 },
+    { ::flatbuffers::ET_BOOL, 0, -1 },
+    { ::flatbuffers::ET_STRING, 0, -1 },
+    { ::flatbuffers::ET_ULONG, 0, -1 },
+    { ::flatbuffers::ET_UCHAR, 0, -1 },
+    { ::flatbuffers::ET_STRING, 0, -1 },
+    { ::flatbuffers::ET_ULONG, 0, -1 }
+  };
+  static const char * const names[] = {
+    "price",
+    "qty",
+    "side",
+    "symbol",
+    "sequence",
+    "type",
+    "order_id",
+    "timestamp"
+  };
+  static const ::flatbuffers::TypeTable tt = {
+    ::flatbuffers::ST_TABLE, 8, type_codes, nullptr, nullptr, nullptr, names
+  };
+  return &tt;
 }
 
 inline const Bitwyre::Flatbuffers::L3Event::L3Event *GetL3Event(const void *buf) {

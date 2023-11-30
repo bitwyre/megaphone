@@ -20,9 +20,14 @@ namespace trades {
 struct trades;
 struct tradesBuilder;
 
+inline const ::flatbuffers::TypeTable *tradesTypeTable();
+
 struct trades FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   typedef tradesBuilder Builder;
   struct Traits;
+  static const ::flatbuffers::TypeTable *MiniReflectTypeTable() {
+    return tradesTypeTable();
+  }
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
     VT_PRICE = 4,
     VT_QTY = 6,
@@ -48,16 +53,6 @@ struct trades FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   }
   uint64_t timestamp() const {
     return GetField<uint64_t>(VT_TIMESTAMP, 0);
-  }
-  template<size_t Index>
-  auto get_field() const {
-         if constexpr (Index == 0) return price();
-    else if constexpr (Index == 1) return qty();
-    else if constexpr (Index == 2) return value();
-    else if constexpr (Index == 3) return tradeType();
-    else if constexpr (Index == 4) return symbol();
-    else if constexpr (Index == 5) return timestamp();
-    else static_assert(Index != Index, "Invalid Field Index");
   }
   bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
@@ -126,19 +121,6 @@ inline ::flatbuffers::Offset<trades> Createtrades(
 struct trades::Traits {
   using type = trades;
   static auto constexpr Create = Createtrades;
-  static constexpr auto name = "trades";
-  static constexpr auto fully_qualified_name = "Bitwyre.Flatbuffers.trades.trades";
-  static constexpr size_t fields_number = 6;
-  static constexpr std::array<const char *, fields_number> field_names = {
-    "price",
-    "qty",
-    "value",
-    "tradeType",
-    "symbol",
-    "timestamp"
-  };
-  template<size_t Index>
-  using FieldType = decltype(std::declval<type>().get_field<Index>());
 };
 
 inline ::flatbuffers::Offset<trades> CreatetradesDirect(
@@ -158,6 +140,29 @@ inline ::flatbuffers::Offset<trades> CreatetradesDirect(
       tradeType,
       symbol__,
       timestamp);
+}
+
+inline const ::flatbuffers::TypeTable *tradesTypeTable() {
+  static const ::flatbuffers::TypeCode type_codes[] = {
+    { ::flatbuffers::ET_DOUBLE, 0, -1 },
+    { ::flatbuffers::ET_DOUBLE, 0, -1 },
+    { ::flatbuffers::ET_DOUBLE, 0, -1 },
+    { ::flatbuffers::ET_BOOL, 0, -1 },
+    { ::flatbuffers::ET_STRING, 0, -1 },
+    { ::flatbuffers::ET_ULONG, 0, -1 }
+  };
+  static const char * const names[] = {
+    "price",
+    "qty",
+    "value",
+    "tradeType",
+    "symbol",
+    "timestamp"
+  };
+  static const ::flatbuffers::TypeTable tt = {
+    ::flatbuffers::ST_TABLE, 6, type_codes, nullptr, nullptr, nullptr, names
+  };
+  return &tt;
 }
 
 inline const Bitwyre::Flatbuffers::trades::trades *Gettrades(const void *buf) {
