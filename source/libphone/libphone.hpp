@@ -27,7 +27,7 @@ private:
 	/* ws->getUserData returns one of these */
 	struct PerSocketData {
 		/* Fill with user data */
-		std::string topic {""};
+		std::vector<std::string> topics {};
 		int user {0};
 	};
 
@@ -44,7 +44,7 @@ private:
 
 	uWSAppWrapper m_app;
 
-	std::vector<std::string> m_all_topics {"bnb_usdt_spot", "busd_usd_spot"};
+	std::vector<std::string> m_supported_instruments {"bnb_usdt_spot", "busd_usd_spot"};
 	int users;
 
 	Serializer m_serializer;
@@ -55,7 +55,7 @@ private: // Private block for WS functions
 	 *
 	 * @param ws Pointer to the WebSocket instance.
 	 */
-	inline auto on_ws_open(uWSWebSocket* ws) -> void;
+	inline auto on_ws_open(uWSWebSocket* ws) noexcept -> void;
 
 	/**
 	 * @brief Called when a WebSocket receives a message.
@@ -64,7 +64,7 @@ private: // Private block for WS functions
 	 * @param message The received message as a string view.
 	 * @param opCode The WebSocket message opcode.
 	 */
-	inline auto on_ws_message(uWSWebSocket* ws, std::string_view message, uWS::OpCode opCode) -> void;
+	inline auto on_ws_message(uWSWebSocket* ws, std::string_view message, uWS::OpCode opCode) noexcept -> void;
 
 	/**
 	 * @brief Called when the WebSocket is ready to accept more data.

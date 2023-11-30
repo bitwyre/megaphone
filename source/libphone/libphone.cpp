@@ -5,7 +5,7 @@
 #include <iostream>
 
 namespace LibPhone {
-Phone::Phone() : m_app(uWSAppWrapper({.passphrase = "1234"})) {
+Phone::Phone() : m_app(uWSAppWrapper({.passphrase = "1234"})), m_serializer(this->m_supported_instruments) {
 
 	this->m_app.ws<PerSocketData>(
 		"/*",
@@ -36,7 +36,8 @@ Phone::Phone() : m_app(uWSAppWrapper({.passphrase = "1234"})) {
 		delay_timer, [](struct us_timer_t*) {}, 1, 1);
 
 	loop->addPostHandler(nullptr, [&](uWS::Loop*) {
-		for (auto& topic : this->m_all_topics) {
+		// TODO: Change with respect to ME
+		for (auto& topic : this->m_supported_instruments) {
 			this->m_app.publish(topic, topic, uWS::OpCode::BINARY, false);
 		}
 	});
@@ -52,30 +53,32 @@ Phone::~Phone() { uWS::Loop::get()->free(); }
 
 auto Phone::run() -> void { this->m_app.run(); }
 
-auto Phone::on_ws_open(uWSWebSocket* ws) -> void {
+auto Phone::on_ws_open(uWSWebSocket* ws) noexcept -> void {
 	/* Open event here, you may access ws->getUserData() which points to a
 	 * PerSocketData struct */
 	PerSocketData* perSocketData = (PerSocketData*)ws->getUserData();
 	perSocketData->user = this->users++;
 }
 
-auto Phone::on_ws_message(uWSWebSocket* ws, std::string_view message, uWS::OpCode opCode) -> void {
+auto Phone::on_ws_message(uWSWebSocket* ws, std::string_view message, uWS::OpCode opCode) noexcept -> void {
 	PerSocketData* perSocketData = (PerSocketData*)ws->getUserData();
 
-	auto trimmed_msg = utils::trim(message);
-	bool topic_exists =
-		std::find(this->m_all_topics.begin(), this->m_all_topics.end(), trimmed_msg) != this->m_all_topics.end();
+	auto [success, req] = this->m_serializer.parse_request(message);
 
-	if (topic_exists) {
+	if (success) {
 
-		perSocketData->topic = trimmed_msg;
-		ws->subscribe(trimmed_msg);
+		perSocketData->topics = std::move(req.topics);
 
-		SPDLOG_INFO("user {} has subscribed to topic {}", perSocketData->user, perSocketData->topic);
+		SPDLOG_INFO("user {} has subscribed to topics: ", perSocketData->user);
+		for (auto& topic : perSocketData->topics) {
+			if (ws->subscribe(topic)) {
+				SPDLOG_INFO("\t - {}", topic);
+			}
+		}
 
 	} else {
 		// return error
-		SPDLOG_ERROR("Topic {} does not exist", trimmed_msg);
+		ws->send("An error has occoured in executing the request, please check the request.");
 	}
 }
 auto Phone::on_ws_drain(uWSWebSocket* ws) noexcept -> void { }

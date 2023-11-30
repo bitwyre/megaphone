@@ -34,34 +34,26 @@ public:
 		Data data;
 	};
 
+	// this object is only constructed
+	// like once per request so it's
+	// fine if it's a bit heavy
 	struct MegaphoneRequest {
 		enum class Operations { SUBSCRIBE, NO_OP };
-		enum class RequestType {
-			L3EVENTS,
-			L2EVENTS,
-			TRADE,
-			DEPTHL2,
-			DEPTHL2_10,
-			DEPTHL2_25,
-			DEPTHL2_50,
-			DEPTHL2_100,
-			NO_REQ
-		};
 
 		Operations operation {Operations::NO_OP};
-		RequestType type {RequestType::NO_REQ};
-		std::string instrument {};
+		std::vector<std::string> topics;
 	};
 
 public: // Methods
-	Serializer()
+	explicit Serializer(const std::vector<std::string>& supported_instruments)
 		: m_document(),
 		  m_buffer(),
 		  m_table(kStringType),
 		  m_action(kStringType),
 		  m_data(kObjectType),
 		  m_bids(kArrayType),
-		  m_asks(kArrayType) { }
+		  m_asks(kArrayType),
+		  m_supported_instruments(supported_instruments) { }
 
 	// TODO: Implement this function
 	// such that it takes in a flatbuffer and returns
@@ -69,7 +61,7 @@ public: // Methods
 	[[nodiscard]] auto dsz_depthl2message() -> DepthL2Message;
 	[[nodiscard]] auto sz_depthl2message(DepthL2Message&& message) -> std::string;
 
-	[[nodiscard]] auto parse_request(std::string_view request) -> MegaphoneRequest;
+	[[nodiscard]] auto parse_request(std::string_view request) -> std::pair<bool, MegaphoneRequest>;
 
 private:
 	Document m_document;
@@ -82,6 +74,8 @@ private:
 
 	Value m_bids; // Set the "bids" array
 	Value m_asks; // Set the "asks" array
+
+	std::vector<std::string> m_supported_instruments;
 
 	auto clear_fields() -> void;
 };
