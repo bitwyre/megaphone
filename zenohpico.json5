@@ -1,0 +1,13 @@
+{
+    "mode": "peer",
+    "connect": {
+        "endpoints": [
+            "udp/localhost:6969"
+        ]
+    },
+    "listen": {
+        "endpoints": [
+            "udp/localhost:6969"
+        ]
+    }
+}

@@ -51,6 +51,7 @@ target_link_libraries(phone
     PUBLIC uWebSockets
     PUBLIC spdlog::spdlog
     PUBLIC rapidjson
+    PUBLIC zenohcxx::zenohc::lib
     PUBLIC zenohcxx::zenohpico
     PUBLIC flatbuffers
 )

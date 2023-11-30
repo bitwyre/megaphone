@@ -39,11 +39,9 @@ Phone::Phone()
 		delay_timer, [](struct us_timer_t*) {}, 1, 1);
 
 	loop->addPostHandler(nullptr, [&](uWS::Loop*) {
-		// TODO: Change with respect to ME
-
 		for (auto& topic : this->m_supported_instruments) {
 			for (auto& action : {"trades:", "depthl2:"})
-				this->m_app.publish(action + topic, "topic", uWS::OpCode::BINARY, false);
+				this->m_app.publish(action + topic, action + topic, uWS::OpCode::BINARY, false);
 		}
 	});
 
