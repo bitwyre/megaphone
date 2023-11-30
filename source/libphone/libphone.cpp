@@ -5,7 +5,7 @@
 #include <iostream>
 
 namespace LibPhone {
-Phone::Phone() : m_app(uWS::App({.passphrase = "1234"})) {
+Phone::Phone() : m_app(uWSAppWrapper({.passphrase = "1234"})) {
 
 	this->m_app.ws<PerSocketData>(
 		"/*",
@@ -18,7 +18,7 @@ Phone::Phone() : m_app(uWS::App({.passphrase = "1234"})) {
 		 .sendPingsAutomatically = true,
 		 /* Handlers */
 		 .upgrade = nullptr,
-		 .open = [this](auto* ws) {},
+		 .open = [this](auto* ws) { this->on_ws_open(ws); },
 		 .message = [this](auto* ws, std::string_view message,
 						   uWS::OpCode opCode) { this->on_ws_message(ws, message, opCode); },
 		 .drain = [this](auto* ws) { this->on_ws_drain(ws); },

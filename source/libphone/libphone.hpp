@@ -36,11 +36,13 @@ private:
 
 #ifdef UWS_USESSL
 	using uWSWebSocket = WrapperSocket<true>;
+	using uWSAppWrapper = uWS::SSLApp;
 #else
 	using uWSWebSocket = WrapperSocket<false>;
+	using uWSAppWrapper = uWS::App;
 #endif
 
-	uWS::App m_app;
+	uWSAppWrapper m_app;
 
 	std::vector<std::string> m_all_topics {"bnb_usdt_spot", "busd_usd_spot"};
 	int users;
