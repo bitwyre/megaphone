@@ -12,10 +12,8 @@ Phone::Phone(zenohc::Session& session)
 		session.declare_subscriber("demo/example/zenoh-python-pub", [&](const zenohc::Sample& sample) {
 			// auto str = std::string(sample.get_payload().as_string_view());
 			// std::cout << str << std::endl;
-			//  FBHandler::flatbuf_to_json<Bitwyre::Flatbuffers::Depthl2::DepthEvent>(str);
-
-			std::string str {sample.get_payload().as_string_view()};
-			this->m_zenoh_queue.push(str);
+			this->m_zenoh_queue.push(FBHandler::flatbuf_to_json<Bitwyre::Flatbuffers::Depthl2::DepthEvent>(
+				sample.get_payload().start, sample.get_payload().get_len()));
 		}));
 
 	this->m_app.ws<PerSocketData>(
@@ -54,10 +52,11 @@ Phone::Phone(zenohc::Session& session)
 		while (this->m_zenoh_queue.size() > 0 && this->m_zenoh_queue.front()) {
 
 			// std::cout << *this->m_zenoh_queue.front() << std::endl;
-			this->m_app.publish(
-				"depthl2:bnb_usdt_spot",
-				FBHandler::flatbuf_to_json<Bitwyre::Flatbuffers::Depthl2::DepthEvent>(*this->m_zenoh_queue.front()),
-				uWS::OpCode::BINARY, false);
+			std::cout << *this->m_zenoh_queue.front() << std::endl;
+			// auto res =
+			// 	FBHandler::flatbuf_to_json<Bitwyre::Flatbuffers::Depthl2::DepthEvent>(*this->m_zenoh_queue.front());
+
+			this->m_app.publish("depthl2:bnb_usdt_spot", *this->m_zenoh_queue.front(), uWS::OpCode::BINARY, false);
 			this->m_zenoh_queue.pop();
 		}
 	});
@@ -83,7 +82,7 @@ auto Phone::on_ws_open(uWSWebSocket* ws) noexcept -> void {
 auto Phone::on_ws_message(uWSWebSocket* ws, std::string_view message, uWS::OpCode opCode) noexcept -> void {
 	PerSocketData* perSocketData = (PerSocketData*)ws->getUserData();
 
-	auto [success, req] = this->m_serializer.parse_request(message);
+	const auto& [success, req] = this->m_serializer.parse_request(message);
 
 	if (success) {
 

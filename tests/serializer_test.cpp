@@ -63,10 +63,8 @@ TEST_CASE("Tests the FBH Class for FlatBuffer to JSON conversion", "[JSON_FBH]")
 
 	builder.Finish(depth_event);
 
-	const uint8_t* buffer = builder.GetBufferPointer();
-
-	LibPhone::FBHandler fbh {};
 	REQUIRE(
-		fbh.flatbuf_to_json<Bitwyre::Flatbuffers::Depthl2::DepthEvent>(reinterpret_cast<const char*>(buffer)) ==
+		LibPhone::FBHandler::flatbuf_to_json<Bitwyre::Flatbuffers::Depthl2::DepthEvent>(builder.GetBufferPointer(),
+																						builder.GetSize()) ==
 		R"({ table: "depthL2", action: "snapshot", data: { instrument: "usdt_jidr_spot", sequence: 2913539096, bids: [ { price: 1.21, qty: 8.0 }, { price: 1.2, qty: 12.0 } ], asks: [ { price: 1.23, qty: 10.0 }, { price: 1.24, qty: 15.0 } ] } })");
 }
