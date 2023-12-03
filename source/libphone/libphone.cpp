@@ -49,15 +49,18 @@ Phone::Phone(zenohc::Session& session)
 	us_timer_set(
 		delay_timer, [](struct us_timer_t*) {}, 1, 1);
 
-	uWS::Loop::get()->addPostHandler(nullptr, [&](uWS::Loop*) {
+	uWS::Loop::get()->addPostHandler(nullptr, [this](uWS::Loop* loop) {
 		if (this->m_zenoh_queue.front() != nullptr) {
-			auto current_item = *this->m_zenoh_queue.front();
 
-			uWS::Loop::get()->defer([this, current_item]() {
-				this->m_app.publish(current_item.msg_type + ':' + current_item.instrument, current_item.data,
-									uWS::OpCode::BINARY, false);
+			loop->defer([this]() {
+				auto current_item = *this->m_zenoh_queue.front();
+				auto current_topic = current_item.msg_type + ':' + current_item.instrument;
+				this->m_app.publish(current_topic, current_item.data, uWS::OpCode::BINARY, false);
 
-				SPDLOG_DEBUG("Current topic: {}", current_topic);
+				// TODO: FIXME goofy issue where the thing works
+				// if I put this log here, but doesn't work if I don't put
+				// the log? wtf?
+				SPDLOG_INFO("Current topic: {}", current_topic);
 			});
 
 			this->m_zenoh_queue.pop();

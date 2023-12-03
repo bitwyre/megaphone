@@ -66,6 +66,7 @@ private:
 
 	const std::vector<std::string> m_supported_instruments;
 	std::atomic_int64_t users {0};
+	std::atomic_bool started {false};
 
 	Serializer m_serializer;
 	zenohc::Subscriber m_zenoh_subscriber;
