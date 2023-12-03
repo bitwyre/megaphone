@@ -5,6 +5,7 @@
 #include <spdlog/spdlog.h>
 #include <zenohc.hxx>
 
+#include <atomic>
 #include <iostream>
 
 #include "SPSCQueue.h"
@@ -13,24 +14,25 @@
 #include "utils/utils.hpp"
 
 constexpr auto PORT = 9001;
+#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_DEBUG
 
 namespace LibPhone {
 
 enum class MessageType { DEPTHL2, L2_EVENTS, L3_EVENTS, TRADE, INVALID };
 struct MEMessage {
-	MEMessage(MessageType p_msg_type, std::string&& p_instrument)
-		: msg_type(p_msg_type), instrument(std::move(p_instrument)) { }
+	MEMessage(std::string&& p_msg_type, std::string&& p_instrument, std::string&& p_data)
+		: msg_type(std::move(p_msg_type)), instrument(std::move(p_instrument)), data(std::move(p_data)) { }
 
-	MessageType msg_type;
+	~MEMessage() = default;
+
+	std::string msg_type;
 	std::string instrument;
-};
+	std::string data;
 
-constexpr utils::ConstexprMap<MessageType, std::string_view, 5> G_MessageMap = {
-	std::make_pair(MessageType::DEPTHL2, "depthl2"sv),
-	{MessageType::L2_EVENTS, "l2events"sv},
-	{MessageType::L3_EVENTS, "l3events"sv},
-	{MessageType::TRADE, "trade"sv},
-	{MessageType::INVALID, "invalid"},
+	MEMessage(const MEMessage&) = delete;
+	MEMessage operator=(const MEMessage&) = delete;
+	MEMessage operator=(MEMessage&& other) = delete;
+	MEMessage(MEMessage&& other) noexcept = delete;
 };
 
 class Phone {
@@ -68,11 +70,11 @@ private:
 	uWSAppWrapper m_app;
 
 	const std::vector<std::string> m_supported_instruments;
-	int users {0};
+	std::atomic_int64_t users {0};
 
 	Serializer m_serializer;
 	zenohc::Subscriber m_zenoh_subscriber;
-	rigtorp::SPSCQueue<MEMessage> m_zenoh_queue {1000000};
+	rigtorp::SPSCQueue<MEMessage> m_zenoh_queue {100'000'000};
 
 private: // Private block for WS functions
 	auto zenoh_callback(const zenohc::Sample& sample) -> void;

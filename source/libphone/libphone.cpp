@@ -1,4 +1,5 @@
 #include "libphone.hpp"
+#include "libusockets.h"
 #include "utils/utils.hpp"
 
 namespace LibPhone {
@@ -9,15 +10,22 @@ Phone::Phone(zenohc::Session& session)
 	  m_serializer(),
 	  m_zenoh_subscriber(nullptr) {
 
-	auto keyexpr_str = utils::ENVManager::get_instance().get_megaphone_zeno_keyexpr();
-	this->m_zenoh_subscriber =
-		zenohc::expect<zenohc::Subscriber>(session.declare_subscriber(keyexpr_str, [&](const zenohc::Sample& sample) {
-			this->m_zenoh_queue.emplace(MessageType::DEPTHL2, "bnb_usdt_spot");
+	this->m_zenoh_subscriber = zenohc::expect<zenohc::Subscriber>(
+		session.declare_subscriber("matching_engine/*", [&](const zenohc::Sample& sample) {
+			// TODO: Flatbuffers (magic + testing)
+			// Try to remove this un-wanted heap allocation
+			std::string lowercase_encoding {sample.get_encoding().get_suffix().as_string_view()};
+			std::string data {sample.get_payload().as_string_view()};
+
+			std::transform(lowercase_encoding.begin(), lowercase_encoding.end(), lowercase_encoding.begin(),
+						   [](unsigned char c) { return std::tolower(c); });
+
+			this->m_zenoh_queue.emplace(std::move(lowercase_encoding), "bnb_usdt_spot", std::move(data));
 		}));
 
 	this->m_app.ws<PerSocketData>(
 		"/*",
-		{.compression = uWS::SHARED_COMPRESSOR,
+		{.compression = uWS::DISABLED,
 		 .maxPayloadLength = 16 * 1024 * 1024,
 		 .idleTimeout = 16,
 		 .maxBackpressure = 1 * 1024 * 1024,
@@ -38,23 +46,23 @@ Phone::Phone(zenohc::Session& session)
 
 	auto* loop_t = reinterpret_cast<struct us_loop_t*>(loop);
 	auto* delay_timer = us_create_timer(loop_t, 0, 0);
-
-	// broadcast the unix time as millis every millisecond
 	us_timer_set(
-		delay_timer, [](struct us_timer_t*) {}, 1, 1);
+		delay_timer, [](struct us_timer_t*) {}, 1, 0);
 
-	loop->addPreHandler(nullptr, [&](uWS::Loop*) {
+	uWS::Loop::get()->addPreHandler(nullptr, [&](uWS::Loop*) {
 		while (this->m_zenoh_queue.size() > 0 && this->m_zenoh_queue.front()) {
 
 			auto& current_item = *this->m_zenoh_queue.front();
-			auto current_topic = std::string(G_MessageMap[current_item.msg_type]) + ":" + current_item.instrument;
 
-			// SPDLOG_INFO("Current topic: {}", current_topic);
-
-			this->m_app.publish(current_topic, current_item.instrument, uWS::OpCode::BINARY, false);
+			this->m_app.publish(current_item.msg_type + ':' + current_item.instrument, current_item.data,
+								uWS::OpCode::BINARY, false);
 			this->m_zenoh_queue.pop();
+
+			SPDLOG_DEBUG("Current topic: {}", current_topic);
 		}
 	});
+
+	uWS::Loop::get()->addPostHandler(nullptr, [&](uWS::Loop*) {});
 
 	this->m_app.listen(PORT, [](auto* listen_socket) {
 		if (listen_socket) {
@@ -72,6 +80,12 @@ auto Phone::on_ws_open(uWSWebSocket* ws) noexcept -> void {
 	 * PerSocketData struct */
 	PerSocketData* perSocketData = (PerSocketData*)ws->getUserData();
 	perSocketData->user = this->users++;
+
+	SPDLOG_INFO("user {} has opened a connection.", perSocketData->user);
+
+	ws->send("Welcome to the Bitwyre WebSocket API! Please send a JSON "
+			 "request structured according to our documentation to "
+			 "subscribe to a channel.");
 }
 
 auto Phone::on_ws_message(uWSWebSocket* ws, std::string_view message, uWS::OpCode opCode) noexcept -> void {
@@ -87,6 +101,8 @@ auto Phone::on_ws_message(uWSWebSocket* ws, std::string_view message, uWS::OpCod
 		for (auto& topic : perSocketData->topics) {
 			if (ws->subscribe(topic)) {
 				SPDLOG_INFO("\t - {}", topic);
+			} else {
+				SPDLOG_ERROR("Failed to subscribe to: {}", topic);
 			}
 		}
 

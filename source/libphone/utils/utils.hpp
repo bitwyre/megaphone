@@ -44,26 +44,6 @@ constexpr auto split(const std::string_view str, const char delimiter) -> std::v
 	return tokens;
 }
 
-template <typename K, typename V, std::size_t N> struct ConstexprMap {
-	using key_type = K;
-	using value_type = V;
-	using const_key_type = std::add_const_t<key_type>;
-	using pair_type = std::pair<const_key_type, V>;
-
-	std::array<pair_type, N> map_;
-
-	[[nodiscard]] constexpr auto at(const_key_type& lookedForKey) const -> value_type {
-		auto it = std::find_if(map_.begin(), map_.end(),
-							   [&lookedForKey](const pair_type& e) { return e.first == lookedForKey; });
-		if (it != map_.end()) {
-			return it->second;
-		}
-		throw std::runtime_error("Element with the specified key not found");
-	}
-
-	constexpr auto operator[](const_key_type& k) const -> value_type { return at(k); }
-};
-
 /**
  * @brief: Meyer's singleton to get env variables
  * defined in the header as it's a tiny, convenience class.
@@ -76,7 +56,6 @@ public:
 		return instance;
 	};
 
-	inline auto get_megaphone_zeno_keyexpr() -> const std::string { return this->m_megaphone_zeno_keyexpr; }
 	inline auto get_megaphone_uws_passphrase() -> const std::string { return this->m_megaphone_uws_passphrase; }
 	inline auto get_megaphone_supported_instruments() -> const std::vector<std::string> {
 		return this->m_megaphone_supported_instruments;
@@ -84,8 +63,7 @@ public:
 
 private:
 	ENVManager()
-		: m_megaphone_zeno_keyexpr(this->get_env<std::string>("MEGAPHONE_ZENO_KEYEXPR")),
-		  m_megaphone_uws_passphrase(this->get_env<std::string>("MEGAPHONE_UWS_PASSPHRASE")),
+		: m_megaphone_uws_passphrase(this->get_env<std::string>("MEGAPHONE_UWS_PASSPHRASE")),
 		  m_megaphone_supported_instruments(
 			  this->get_env<std::vector<std::string>>("MEGAPHONE_SUPPORTED_INSTRUMENTS")) { }
 	~ENVManager() = default;
@@ -112,7 +90,6 @@ private:
 	}
 
 private:
-	const std::string m_megaphone_zeno_keyexpr;
 	const std::string m_megaphone_uws_passphrase;
 	const std::vector<std::string> m_megaphone_supported_instruments;
 };

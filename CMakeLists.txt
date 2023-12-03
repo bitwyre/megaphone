@@ -6,7 +6,7 @@ option(USE_CLANG_TIDY OFF "An option to turn off clang-tidy")
 
 # Set project options
 set(CMAKE_CXX_STANDARD 23)
-set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_BUILD_TYPE Release)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -28,6 +28,7 @@ set(COMPILER_FLAGS
     -Wall -Wextra
     # Except for the ones that aren't mine
     -Wno-deprecated -Wno-unused-parameter -Wno-deprecated-declarations
+    -Wno-macro-redefined
     # Add asan options
     -fsanitize=address -fsanitize=pointer-compare
     -fsanitize=pointer-subtract -fsanitize=float-divide-by-zero
