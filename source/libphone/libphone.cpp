@@ -31,7 +31,7 @@ Phone::Phone(zenohc::Session& session)
 		 .maxBackpressure = 1 * 1024 * 1024,
 		 .closeOnBackpressureLimit = false,
 		 .resetIdleTimeoutOnSend = false,
-		 .sendPingsAutomatically = true,
+		 .sendPingsAutomatically = false,
 		 /* Handlers */
 		 .upgrade = nullptr,
 		 .open = [this](auto* ws) { this->on_ws_open(ws); },
@@ -47,22 +47,22 @@ Phone::Phone(zenohc::Session& session)
 	auto* loop_t = reinterpret_cast<struct us_loop_t*>(loop);
 	auto* delay_timer = us_create_timer(loop_t, 0, 0);
 	us_timer_set(
-		delay_timer, [](struct us_timer_t*) {}, 1, 0);
+		delay_timer, [](struct us_timer_t*) {}, 1, 1);
 
-	uWS::Loop::get()->addPreHandler(nullptr, [&](uWS::Loop*) {
-		while (this->m_zenoh_queue.size() > 0 && this->m_zenoh_queue.front()) {
+	uWS::Loop::get()->addPostHandler(nullptr, [&](uWS::Loop*) {
+		if (this->m_zenoh_queue.front() != nullptr) {
+			auto current_item = *this->m_zenoh_queue.front();
 
-			auto& current_item = *this->m_zenoh_queue.front();
+			uWS::Loop::get()->defer([this, current_item]() {
+				this->m_app.publish(current_item.msg_type + ':' + current_item.instrument, current_item.data,
+									uWS::OpCode::BINARY, false);
 
-			this->m_app.publish(current_item.msg_type + ':' + current_item.instrument, current_item.data,
-								uWS::OpCode::BINARY, false);
+				SPDLOG_DEBUG("Current topic: {}", current_topic);
+			});
+
 			this->m_zenoh_queue.pop();
-
-			SPDLOG_DEBUG("Current topic: {}", current_topic);
 		}
 	});
-
-	uWS::Loop::get()->addPostHandler(nullptr, [&](uWS::Loop*) {});
 
 	this->m_app.listen(PORT, [](auto* listen_socket) {
 		if (listen_socket) {

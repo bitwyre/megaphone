@@ -28,11 +28,6 @@ struct MEMessage {
 	std::string msg_type;
 	std::string instrument;
 	std::string data;
-
-	MEMessage(const MEMessage&) = delete;
-	MEMessage operator=(const MEMessage&) = delete;
-	MEMessage operator=(MEMessage&& other) = delete;
-	MEMessage(MEMessage&& other) noexcept = delete;
 };
 
 class Phone {
