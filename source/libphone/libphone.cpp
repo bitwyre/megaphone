@@ -2,18 +2,17 @@
 #include "utils/utils.hpp"
 
 namespace LibPhone {
+
 Phone::Phone(zenohc::Session& session)
-	: m_app(uWSAppWrapper({.passphrase = "1234"})),
-	  m_supported_instruments({"bnb_usdt_spot", "busd_usd_spot"}),
-	  m_serializer(this->m_supported_instruments),
+	: m_app(uWSAppWrapper({.passphrase = utils::ENVManager::get_instance().get_megaphone_uws_passphrase().c_str()})),
+	  m_supported_instruments(utils::ENVManager::get_instance().get_megaphone_supported_instruments()),
+	  m_serializer(),
 	  m_zenoh_subscriber(nullptr) {
 
-	this->m_zenoh_subscriber = zenohc::expect<zenohc::Subscriber>(
-		session.declare_subscriber("demo/example/zenoh-python-pub", [&](const zenohc::Sample& sample) {
-			// auto str = std::string(sample.get_payload().as_string_view());
-			// std::cout << str << std::endl;
-			this->m_zenoh_queue.push(FBHandler::flatbuf_to_json<Bitwyre::Flatbuffers::Depthl2::DepthEvent>(
-				sample.get_payload().start, sample.get_payload().get_len()));
+	auto keyexpr_str = utils::ENVManager::get_instance().get_megaphone_zeno_keyexpr();
+	this->m_zenoh_subscriber =
+		zenohc::expect<zenohc::Subscriber>(session.declare_subscriber(keyexpr_str, [&](const zenohc::Sample& sample) {
+			this->m_zenoh_queue.emplace(MessageType::DEPTHL2, "bnb_usdt_spot");
 		}));
 
 	this->m_app.ws<PerSocketData>(
@@ -45,18 +44,14 @@ Phone::Phone(zenohc::Session& session)
 		delay_timer, [](struct us_timer_t*) {}, 1, 1);
 
 	loop->addPreHandler(nullptr, [&](uWS::Loop*) {
-		// for (auto& topic : this->m_supported_instruments) {
-		// 	for (auto& action : {"trades:", "depthl2:"})
-		// 		this->m_app.publish(action + topic, action + topic, uWS::OpCode::BINARY, false);
-		// }
 		while (this->m_zenoh_queue.size() > 0 && this->m_zenoh_queue.front()) {
 
-			// std::cout << *this->m_zenoh_queue.front() << std::endl;
-			std::cout << *this->m_zenoh_queue.front() << std::endl;
-			// auto res =
-			// 	FBHandler::flatbuf_to_json<Bitwyre::Flatbuffers::Depthl2::DepthEvent>(*this->m_zenoh_queue.front());
+			auto& current_item = *this->m_zenoh_queue.front();
+			auto current_topic = std::string(G_MessageMap[current_item.msg_type]) + ":" + current_item.instrument;
 
-			this->m_app.publish("depthl2:bnb_usdt_spot", *this->m_zenoh_queue.front(), uWS::OpCode::BINARY, false);
+			// SPDLOG_INFO("Current topic: {}", current_topic);
+
+			this->m_app.publish(current_topic, current_item.instrument, uWS::OpCode::BINARY, false);
 			this->m_zenoh_queue.pop();
 		}
 	});
@@ -100,6 +95,7 @@ auto Phone::on_ws_message(uWSWebSocket* ws, std::string_view message, uWS::OpCod
 		ws->send("An error has occoured in executing the request, please check the request.");
 	}
 }
+
 auto Phone::on_ws_drain(uWSWebSocket* ws) noexcept -> void { }
 
 auto Phone::on_ws_ping(uWSWebSocket* ws, std::string_view message) noexcept -> void { }

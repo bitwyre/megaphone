@@ -38,7 +38,7 @@ public:
 
 		if constexpr (std::is_same_v<FlatBufType, Bitwyre::Flatbuffers::Depthl2::DepthEvent>) {
 			type_table = Bitwyre::Flatbuffers::Depthl2::DepthEventTypeTable();
-			if (Bitwyre::Flatbuffers::Depthl2::VerifySizePrefixedDepthEventBuffer(verifier))
+			if (Bitwyre::Flatbuffers::Depthl2::VerifyDepthEventBuffer(verifier))
 				return flatbuffers::FlatBufferToString(buf, type_table);
 			else
 				return "Invalid buffer received, PLEASE REPORT THIS to the provider";
@@ -48,24 +48,25 @@ public:
 			if (Bitwyre::Flatbuffers::L2Event::VerifyL2EventBuffer(verifier))
 				return flatbuffers::FlatBufferToString(buf, type_table);
 			else
-				return "Invalid buffer recv.";
+				return "Invalid buffer received, PLEASE REPORT THIS to the provider";
 
 		} else if constexpr (std::is_same_v<FlatBufType, Bitwyre::Flatbuffers::L3Event::L3Event>) {
 			type_table = Bitwyre::Flatbuffers::L3Event::L3EventTypeTable();
 			if (Bitwyre::Flatbuffers::L3Event::VerifyL3EventBuffer(verifier))
 				return flatbuffers::FlatBufferToString(buf, type_table);
 			else
-				return "Invalid buffer recv.";
+				return "Invalid buffer received, PLEASE REPORT THIS to the provider";
 
 		} else if constexpr (std::is_same_v<FlatBufType, Bitwyre::Flatbuffers::trades::trades>) {
 			type_table = Bitwyre::Flatbuffers::trades::tradesTypeTable();
 			if (Bitwyre::Flatbuffers::trades::VerifytradesBuffer(verifier))
 				return flatbuffers::FlatBufferToString(buf, type_table);
 			else
-				return "Invalid buffer recv.";
+				return "Invalid buffer received, PLEASE REPORT THIS to the provider";
 
-		} else
+		} else {
 			static_assert(always_false_v<FlatBufType>, "This type is unsupported!");
+		}
 	}
 
 private:

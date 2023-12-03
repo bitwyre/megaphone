@@ -4,6 +4,8 @@
 #include "rapidjson/stringbuffer.h"
 #include "rapidjson/writer.h"
 
+#include "utils/utils.hpp"
+
 #include <cstddef>
 #include <string>
 #include <vector>
@@ -45,8 +47,9 @@ public:
 	};
 
 public: // Methods
-	explicit Serializer(const std::vector<std::string>& supported_instruments)
-		: m_document(), m_supported_instruments(supported_instruments) { }
+	explicit Serializer()
+		: m_document(),
+		  m_supported_instruments(utils::ENVManager::get_instance().get_megaphone_supported_instruments()) { }
 
 	Serializer(const Serializer&) = delete;
 	Serializer(Serializer&&) noexcept = delete;

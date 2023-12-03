@@ -10,7 +10,7 @@ using MegaphoneRequest = LibPhone::Serializer::MegaphoneRequest;
 TEST_CASE("The JSON request parser function is tested with correct data", "[JSON_REQ_PARSER_NOSANITIZE]") {
 	std::string_view req = R"({"op" : "subscribe", "args": ["trades:bnb_usdt_spot", "depthl2:bnb_usdt_spot"]})";
 
-	LibPhone::Serializer sz {{"bnb_usdt_spot", "busd_usd_spot"}};
+	LibPhone::Serializer sz;
 	auto [req_success, res] = sz.parse_request(req);
 
 	REQUIRE(req_success == true);
@@ -23,7 +23,7 @@ TEST_CASE("The JSON request parser function is tested with correct data", "[JSON
 TEST_CASE("The JSON request parser function is tested with incorrect data", "[JSON_REQ_PARSER_SANITIZE]") {
 	std::string_view req = R"({"op" : "subscribe", "args": ["trades:bnb_usdt_spot" "depthl2:bnb_usdt_spot"]})";
 
-	LibPhone::Serializer sz {{"bnb_usdt_spot", "busd_usd_spot"}};
+	LibPhone::Serializer sz;
 
 	auto [req_success, res] = sz.parse_request(req);
 

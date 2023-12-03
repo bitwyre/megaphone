@@ -10,10 +10,28 @@
 #include "SPSCQueue.h"
 #include "fbhandler/fbhandler.hpp"
 #include "serializer/serializer.hpp"
+#include "utils/utils.hpp"
 
 constexpr auto PORT = 9001;
 
 namespace LibPhone {
+
+enum class MessageType { DEPTHL2, L2_EVENTS, L3_EVENTS, TRADE, INVALID };
+struct MEMessage {
+	MEMessage(MessageType p_msg_type, std::string&& p_instrument)
+		: msg_type(p_msg_type), instrument(std::move(p_instrument)) { }
+
+	MessageType msg_type;
+	std::string instrument;
+};
+
+constexpr utils::ConstexprMap<MessageType, std::string_view, 5> G_MessageMap = {
+	std::make_pair(MessageType::DEPTHL2, "depthl2"sv),
+	{MessageType::L2_EVENTS, "l2events"sv},
+	{MessageType::L3_EVENTS, "l3events"sv},
+	{MessageType::TRADE, "trade"sv},
+	{MessageType::INVALID, "invalid"},
+};
 
 class Phone {
 public:
@@ -53,12 +71,8 @@ private:
 	int users {0};
 
 	Serializer m_serializer;
-
 	zenohc::Subscriber m_zenoh_subscriber;
-
-	LibPhone::FBHandler m_fbh;
-
-	rigtorp::SPSCQueue<std::string> m_zenoh_queue {1000000};
+	rigtorp::SPSCQueue<MEMessage> m_zenoh_queue {1000000};
 
 private: // Private block for WS functions
 	auto zenoh_callback(const zenohc::Sample& sample) -> void;
