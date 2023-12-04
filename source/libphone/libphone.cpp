@@ -26,7 +26,7 @@ Phone::Phone(zenohc::Session& session)
 			// TODO: Flatbuffers (magic + testing)
 			// Try to remove this un-wanted heap allocation
 			std::string encoding {sample.get_encoding().get_suffix().as_string_view()};
-			std::string data {sample.get_payload().as_string_view()};
+			std::string data {};
 			std::string instrument {};
 
 			std::transform(encoding.begin(), encoding.end(), encoding.begin(),
@@ -37,24 +37,32 @@ Phone::Phone(zenohc::Session& session)
 			} else if (encoding == "l2_events") {
 				auto data_flatbuf = Bitwyre::Flatbuffers::L2Event::GetL2Event(data.c_str());
 				instrument = data_flatbuf->symbol()->str();
+				data = FBHandler::flatbuf_to_json<Bitwyre::Flatbuffers::L2Event::L2Event>(
+					sample.get_payload().start, sample.get_payload().get_len());
 
 			} else if (encoding == "l3_events") {
 				auto data_flatbuf = Bitwyre::Flatbuffers::L3Event::GetL3Event(data.c_str());
 				instrument = data_flatbuf->symbol()->str();
+				data = FBHandler::flatbuf_to_json<Bitwyre::Flatbuffers::L2Event::L2Event>(
+					sample.get_payload().start, sample.get_payload().get_len());
 
 			} else if (encoding == "trades") {
 				auto data_flatbuf = Bitwyre::Flatbuffers::trades::Gettrades(data.c_str());
 				instrument = data_flatbuf->symbol()->str();
+				data = FBHandler::flatbuf_to_json<Bitwyre::Flatbuffers::L2Event::L2Event>(
+					sample.get_payload().start, sample.get_payload().get_len());
 
 			} else if (encoding == "depthl2" || encoding == "depthl2_10" || encoding == "depthl2_25" ||
 					   encoding == "depthl2_50" || encoding == "depthl2_100") {
 				auto data_flatbuf = Bitwyre::Flatbuffers::Depthl2::GetDepthEvent(data.c_str());
 				instrument = data_flatbuf->data()->instrument()->str();
+				data = FBHandler::flatbuf_to_json<Bitwyre::Flatbuffers::L2Event::L2Event>(
+					sample.get_payload().start, sample.get_payload().get_len());
 			}
 
-			SPDLOG_INFO("Instrument: {}", instrument);
+			SPDLOG_INFO("Event type: {}\n\tData: {}\n\tInstrument: {}", encoding, data, instrument);
 
-			this->m_zenoh_queue.push(MEMessage {encoding, "bnb_usdt_spot"s, data});
+			this->m_zenoh_queue.push(MEMessage {encoding, instrument, data});
 		}));
 
 	this->m_app.ws<PerSocketData>(
