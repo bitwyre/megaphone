@@ -67,7 +67,7 @@ Phone::Phone(zenohc::Session& session)
 
 			SPDLOG_INFO("Event type: {}\n\tData: {}\n\tInstrument: {}", encoding, data, instrument);
 
-			this->m_zenoh_queue.push(MEMessage {encoding, instrument, data});
+			this->m_zenoh_queue.push(MEMessage {encoding + ":" + instrument, instrument, data});
 		}));
 
 	this->m_app.ws<PerSocketData>(
