@@ -28,7 +28,7 @@ constexpr auto trim(const std::string_view in) -> std::string_view {
 	return std::string_view(left, std::distance(left, right) + 1);
 }
 
-constexpr auto split(const std::string_view str, const char delimiter) -> std::vector<std::string> {
+inline auto split(const std::string_view str, const char delimiter) -> std::vector<std::string> {
 	std::vector<std::string> tokens;
 	tokens.reserve(16);
 	size_t start = 0;

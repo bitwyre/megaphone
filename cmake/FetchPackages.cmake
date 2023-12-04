@@ -84,6 +84,15 @@ FetchContent_MakeAvailable(uSockets_content)
 FetchContent_MakeAvailable(flatbuffers)
 FetchContent_GetProperties(rapidjson)
 
+set_target_properties(zenohcxx_zenohpico PROPERTIES
+  CXX_STANDARD 11  # Set the desired C++ standard
+  CXX_STANDARD_REQUIRED YES
+)
+
+set_target_properties(zenohcxx_zenohc_lib PROPERTIES
+  CXX_STANDARD 11  # Set the desired C++ standard
+  CXX_STANDARD_REQUIRED YES
+)
 
 find_package(ZLIB REQUIRED)
 

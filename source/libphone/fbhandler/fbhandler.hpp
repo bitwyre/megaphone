@@ -32,7 +32,7 @@ public:
 	FBHandler operator=(FBHandler&&) noexcept = delete;
 
 	template <typename FlatBufType>
-	[[nodiscard]] static constexpr auto flatbuf_to_json(const uint8_t* buf, const auto size) -> std::string {
+	[[nodiscard]] static auto flatbuf_to_json(const uint8_t* buf, const auto size) -> std::string {
 		const flatbuffers::TypeTable* type_table = nullptr;
 		auto verifier = flatbuffers::Verifier(buf, size);
 
