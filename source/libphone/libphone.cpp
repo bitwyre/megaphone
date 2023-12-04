@@ -35,26 +35,30 @@ Phone::Phone(zenohc::Session& session)
 				SPDLOG_ERROR("unimplemented event");
 
 			} else if (encoding == "l2_events") {
-				auto data_flatbuf = Bitwyre::Flatbuffers::L2Event::GetL2Event(data.c_str());
+				auto data_flatbuf =
+					Bitwyre::Flatbuffers::L2Event::GetL2Event(sample.get_payload().as_string_view().data());
 				instrument = data_flatbuf->symbol()->str();
 				data = FBHandler::flatbuf_to_json<Bitwyre::Flatbuffers::L2Event::L2Event>(
 					sample.get_payload().start, sample.get_payload().get_len());
 
 			} else if (encoding == "l3_events") {
-				auto data_flatbuf = Bitwyre::Flatbuffers::L3Event::GetL3Event(data.c_str());
+				auto data_flatbuf =
+					Bitwyre::Flatbuffers::L3Event::GetL3Event(sample.get_payload().as_string_view().data());
 				instrument = data_flatbuf->symbol()->str();
 				data = FBHandler::flatbuf_to_json<Bitwyre::Flatbuffers::L2Event::L2Event>(
 					sample.get_payload().start, sample.get_payload().get_len());
 
 			} else if (encoding == "trades") {
-				auto data_flatbuf = Bitwyre::Flatbuffers::trades::Gettrades(data.c_str());
+				auto data_flatbuf =
+					Bitwyre::Flatbuffers::trades::Gettrades(sample.get_payload().as_string_view().data());
 				instrument = data_flatbuf->symbol()->str();
 				data = FBHandler::flatbuf_to_json<Bitwyre::Flatbuffers::L2Event::L2Event>(
 					sample.get_payload().start, sample.get_payload().get_len());
 
 			} else if (encoding == "depthl2" || encoding == "depthl2_10" || encoding == "depthl2_25" ||
 					   encoding == "depthl2_50" || encoding == "depthl2_100") {
-				auto data_flatbuf = Bitwyre::Flatbuffers::Depthl2::GetDepthEvent(data.c_str());
+				auto data_flatbuf =
+					Bitwyre::Flatbuffers::Depthl2::GetDepthEvent(sample.get_payload().as_string_view().data());
 				instrument = data_flatbuf->data()->instrument()->str();
 				data = FBHandler::flatbuf_to_json<Bitwyre::Flatbuffers::L2Event::L2Event>(
 					sample.get_payload().start, sample.get_payload().get_len());
