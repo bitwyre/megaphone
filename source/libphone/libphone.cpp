@@ -5,6 +5,11 @@
 #include <chrono>
 #include <thread>
 
+#include "depthl2_generated.h"
+#include "l2_events_generated.h"
+#include "l3_events_generated.h"
+#include "trades_generated.h"
+
 namespace LibPhone {
 
 Phone::Phone(zenohc::Session& session)
@@ -14,18 +19,42 @@ Phone::Phone(zenohc::Session& session)
 	  m_zenoh_subscriber(nullptr) {
 
 	this->m_zenoh_subscriber = zenohc::expect<zenohc::Subscriber>(
-		session.declare_subscriber("matching_engine/*", [&](const zenohc::Sample& sample) {
+		session.declare_subscriber("bitwyre/megaphone/websockets", [&](const zenohc::Sample& sample) {
 			// Timer so that Zenoh doesn't overload the shit out of megaphone
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
 			// TODO: Flatbuffers (magic + testing)
 			// Try to remove this un-wanted heap allocation
-			std::string lowercase_encoding {sample.get_encoding().get_suffix().as_string_view()};
+			std::string encoding {sample.get_encoding().get_suffix().as_string_view()};
 			std::string data {sample.get_payload().as_string_view()};
+			std::string instrument {};
 
-			std::transform(lowercase_encoding.begin(), lowercase_encoding.end(), lowercase_encoding.begin(),
+			std::transform(encoding.begin(), encoding.end(), encoding.begin(),
 						   [](unsigned char c) { return std::tolower(c); });
-			this->m_zenoh_queue.push(MEMessage {lowercase_encoding, "bnb_usdt_spot"s, data});
+			if (encoding == "ticker") {
+				SPDLOG_ERROR("unimplemented event");
+
+			} else if (encoding == "l2_events") {
+				auto data_flatbuf = Bitwyre::Flatbuffers::L2Event::GetL2Event(data.c_str());
+				instrument = data_flatbuf->symbol()->str();
+
+			} else if (encoding == "l3_events") {
+				auto data_flatbuf = Bitwyre::Flatbuffers::L3Event::GetL3Event(data.c_str());
+				instrument = data_flatbuf->symbol()->str();
+
+			} else if (encoding == "trades") {
+				auto data_flatbuf = Bitwyre::Flatbuffers::trades::Gettrades(data.c_str());
+				instrument = data_flatbuf->symbol()->str();
+
+			} else if (encoding == "depthl2" || encoding == "depthl2_10" || encoding == "depthl2_25" ||
+					   encoding == "depthl2_50" || encoding == "depthl2_100") {
+				auto data_flatbuf = Bitwyre::Flatbuffers::Depthl2::GetDepthEvent(data.c_str());
+				instrument = data_flatbuf->data()->instrument()->str();
+			}
+
+			SPDLOG_INFO("Instrument: {}", instrument);
+
+			this->m_zenoh_queue.push(MEMessage {encoding, "bnb_usdt_spot"s, data});
 		}));
 
 	this->m_app.ws<PerSocketData>(
