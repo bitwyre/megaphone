@@ -13,6 +13,7 @@
 #include "l2_events_generated.h"
 #include "l3_events_generated.h"
 #include "trades_generated.h"
+#include "ticker_generated.h"
 
 #include <iostream>
 
@@ -74,6 +75,13 @@ public:
 		} else if constexpr (std::is_same_v<FlatBufType, Bitwyre::Flatbuffers::trades::trades>) {
 			type_table = Bitwyre::Flatbuffers::trades::tradesTypeTable();
 			if (Bitwyre::Flatbuffers::trades::VerifytradesBuffer(verifier))
+				return flatbuffers::FlatBufferToString(buf, type_table);
+			else
+				return "Invalid buffer received, PLEASE REPORT THIS to the provider";
+
+		} else if constexpr (std::is_same_v<FlatBufType, Bitwyre::Flatbuffers::Ticker::TickerEvent>) {
+			type_table = Bitwyre::Flatbuffers::Ticker::TickerEventTypeTable();
+			if (Bitwyre::Flatbuffers::Ticker::VerifyTickerEventBuffer(verifier))
 				return flatbuffers::FlatBufferToString(buf, type_table);
 			else
 				return "Invalid buffer received, PLEASE REPORT THIS to the provider";

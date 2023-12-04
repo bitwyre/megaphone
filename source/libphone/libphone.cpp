@@ -9,6 +9,7 @@
 #include "l2_events_generated.h"
 #include "l3_events_generated.h"
 #include "trades_generated.h"
+#include "ticker_generated.h"
 
 namespace LibPhone {
 
@@ -31,7 +32,11 @@ Phone::Phone(zenohc::Session& session)
 			std::transform(encoding.begin(), encoding.end(), encoding.begin(),
 						   [](unsigned char c) { return std::tolower(c); });
 			if (encoding == "ticker") {
-				SPDLOG_ERROR("unimplemented event");
+				auto data_flatbuf =
+					Bitwyre::Flatbuffers::Ticker::GetTickerEvent(datacopy.c_str());
+				instrument = data_flatbuf->instrument()->str();
+				data = FBHandler::flatbuf_to_json<Bitwyre::Flatbuffers::Ticker::TickerEvent>(
+					sample.get_payload().start, sample.get_payload().get_len());
 
 			} else if (encoding == "l2_events") {
 				auto data_flatbuf =
