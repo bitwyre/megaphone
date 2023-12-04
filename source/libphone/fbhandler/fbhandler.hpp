@@ -39,21 +39,24 @@ public:
 		if constexpr (std::is_same_v<FlatBufType, Bitwyre::Flatbuffers::Depthl2::DepthEvent>) {
 			type_table = Bitwyre::Flatbuffers::Depthl2::DepthEventTypeTable();
 			if (Bitwyre::Flatbuffers::Depthl2::VerifyDepthEventBuffer(verifier)) {
+				return flatbuffers::FlatBufferToString(buf, type_table);
+			} else {
 				// Extra checks for vectors and whatnot
 				auto data_flatbuf =
 					Bitwyre::Flatbuffers::Depthl2::GetDepthEvent(buf);
-				const auto& event_data = data_flatbuf->data();
 
+				const auto& event_data = data_flatbuf->data();
 				if (event_data->asks()->size() <= 0)
 					return "Invalid DepthL2 event received, no asks.";
 				else if (event_data->bids()->size() <= 0)
 					return "Invalid DepthL2 event received, no bids.";
-
-				return flatbuffers::FlatBufferToString(buf, type_table);
+				else if (event_data->sequence() == 0)
+					return flatbuffers::FlatBufferToString(buf, type_table);
+				else
+					return flatbuffers::FlatBufferToString(buf, type_table);
 			}
-			else
-				return "Invalid buffer received, PLEASE REPORT THIS to the provider";
 
+			return flatbuffers::FlatBufferToString(buf, type_table);
 		} else if constexpr (std::is_same_v<FlatBufType, Bitwyre::Flatbuffers::L2Event::L2Event>) {
 			type_table = Bitwyre::Flatbuffers::L2Event::L2EventTypeTable();
 			if (Bitwyre::Flatbuffers::L2Event::VerifyL2EventBuffer(verifier))

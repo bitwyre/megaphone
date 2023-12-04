@@ -63,7 +63,7 @@ Phone::Phone(zenohc::Session& session)
 					sample.get_payload().start, sample.get_payload().get_len());
 			}
 
-			// SPDLOG_INFO("Event type: {}\n\tData: {}\n\tInstrument: {}", encoding, data, instrument);
+			SPDLOG_INFO("Event type: {}\n\tData: {}\n\tInstrument: {}", encoding, data, instrument);
 
 			this->m_zenoh_queue.push(MEMessage {encoding, instrument, data});
 		}));
