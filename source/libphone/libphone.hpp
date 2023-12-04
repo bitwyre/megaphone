@@ -20,11 +20,6 @@ namespace LibPhone {
 
 enum class MessageType { DEPTHL2, L2_EVENTS, L3_EVENTS, TRADE, INVALID };
 struct MEMessage {
-	MEMessage(std::string&& p_msg_type, std::string&& p_instrument, std::string&& p_data)
-		: msg_type(std::move(p_msg_type)), instrument(std::move(p_instrument)), data(std::move(p_data)) { }
-
-	~MEMessage() = default;
-
 	std::string msg_type;
 	std::string instrument;
 	std::string data;
@@ -66,7 +61,7 @@ private:
 
 	const std::vector<std::string> m_supported_instruments;
 	std::atomic_int64_t users {0};
-	std::atomic_bool started {false};
+	std::atomic_bool running {false};
 
 	Serializer m_serializer;
 	zenohc::Subscriber m_zenoh_subscriber;

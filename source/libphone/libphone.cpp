@@ -20,7 +20,7 @@ Phone::Phone(zenohc::Session& session)
 			std::transform(lowercase_encoding.begin(), lowercase_encoding.end(), lowercase_encoding.begin(),
 						   [](unsigned char c) { return std::tolower(c); });
 
-			this->m_zenoh_queue.emplace(std::move(lowercase_encoding), "bnb_usdt_spot", std::move(data));
+			this->m_zenoh_queue.push(MEMessage {lowercase_encoding, "bnb_usdt_spot"s, data});
 		}));
 
 	this->m_app.ws<PerSocketData>(
@@ -49,22 +49,18 @@ Phone::Phone(zenohc::Session& session)
 	us_timer_set(
 		delay_timer, [](struct us_timer_t*) {}, 1, 1);
 
-	uWS::Loop::get()->addPostHandler(nullptr, [this](uWS::Loop* loop) {
-		if (this->m_zenoh_queue.front() != nullptr) {
+	this->running.store(true);
 
-			loop->defer([this]() {
+	loop->addPostHandler(nullptr, [this](uWS::Loop* p_loop) {
+		p_loop->defer([this]() {
+			if (this->m_zenoh_queue.front() != nullptr) {
 				auto current_item = *this->m_zenoh_queue.front();
 				auto current_topic = current_item.msg_type + ':' + current_item.instrument;
-				this->m_app.publish(current_topic, current_item.data, uWS::OpCode::BINARY, false);
-
-				// TODO: FIXME goofy issue where the thing works
-				// if I put this log here, but doesn't work if I don't put
-				// the log? wtf?
-				SPDLOG_INFO("Current topic: {}", current_topic);
-			});
-
-			this->m_zenoh_queue.pop();
-		}
+				if (this->m_app.publish(current_topic, current_item.data, uWS::OpCode::BINARY, false)) {
+					this->m_zenoh_queue.pop();
+				}
+			}
+		});
 	});
 
 	this->m_app.listen(PORT, [](auto* listen_socket) {
@@ -74,7 +70,10 @@ Phone::Phone(zenohc::Session& session)
 	});
 };
 
-Phone::~Phone() { uWS::Loop::get()->free(); }
+Phone::~Phone() {
+	running.store(false);
+	uWS::Loop::get()->free();
+}
 
 auto Phone::run() -> void { this->m_app.run(); }
 
