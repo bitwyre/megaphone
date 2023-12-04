@@ -2,6 +2,9 @@
 #include "libusockets.h"
 #include "utils/utils.hpp"
 
+#include <chrono>
+#include <thread>
+
 namespace LibPhone {
 
 Phone::Phone(zenohc::Session& session)
@@ -12,6 +15,9 @@ Phone::Phone(zenohc::Session& session)
 
 	this->m_zenoh_subscriber = zenohc::expect<zenohc::Subscriber>(
 		session.declare_subscriber("matching_engine/*", [&](const zenohc::Sample& sample) {
+			// Timer so that Zenoh doesn't overload the shit out of megaphone
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
 			// TODO: Flatbuffers (magic + testing)
 			// Try to remove this un-wanted heap allocation
 			std::string lowercase_encoding {sample.get_encoding().get_suffix().as_string_view()};
@@ -19,7 +25,6 @@ Phone::Phone(zenohc::Session& session)
 
 			std::transform(lowercase_encoding.begin(), lowercase_encoding.end(), lowercase_encoding.begin(),
 						   [](unsigned char c) { return std::tolower(c); });
-
 			this->m_zenoh_queue.push(MEMessage {lowercase_encoding, "bnb_usdt_spot"s, data});
 		}));
 
@@ -49,8 +54,6 @@ Phone::Phone(zenohc::Session& session)
 	us_timer_set(
 		delay_timer, [](struct us_timer_t*) {}, 1, 1);
 
-	this->running.store(true);
-
 	loop->addPostHandler(nullptr, [this](uWS::Loop* p_loop) {
 		p_loop->defer([this]() {
 			if (this->m_zenoh_queue.front() != nullptr) {
@@ -70,10 +73,7 @@ Phone::Phone(zenohc::Session& session)
 	});
 };
 
-Phone::~Phone() {
-	running.store(false);
-	uWS::Loop::get()->free();
-}
+Phone::~Phone() { }
 
 auto Phone::run() -> void { this->m_app.run(); }
 

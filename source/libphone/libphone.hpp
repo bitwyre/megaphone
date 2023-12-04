@@ -61,11 +61,10 @@ private:
 
 	const std::vector<std::string> m_supported_instruments;
 	std::atomic_int64_t users {0};
-	std::atomic_bool running {false};
 
 	Serializer m_serializer;
 	zenohc::Subscriber m_zenoh_subscriber;
-	rigtorp::SPSCQueue<MEMessage> m_zenoh_queue {100'000'000};
+	rigtorp::SPSCQueue<MEMessage> m_zenoh_queue {100'000};
 
 private: // Private block for WS functions
 	auto zenoh_callback(const zenohc::Sample& sample) -> void;
