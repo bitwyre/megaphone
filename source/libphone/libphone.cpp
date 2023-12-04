@@ -23,8 +23,6 @@ Phone::Phone(zenohc::Session& session)
 			// Timer so that Zenoh doesn't overload the shit out of megaphone
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
-			// TODO: Flatbuffers (magic + testing)
-			// Try to remove this un-wanted heap allocation
 			std::string encoding {sample.get_encoding().get_suffix().as_string_view()};
 			std::string datacopy {sample.get_payload().as_string_view()};
 			std::string data {};
@@ -65,9 +63,9 @@ Phone::Phone(zenohc::Session& session)
 					sample.get_payload().start, sample.get_payload().get_len());
 			}
 
-			SPDLOG_INFO("Event type: {}\n\tData: {}\n\tInstrument: {}", encoding, data, instrument);
+			// SPDLOG_INFO("Event type: {}\n\tData: {}\n\tInstrument: {}", encoding, data, instrument);
 
-			this->m_zenoh_queue.push(MEMessage {encoding + ":" + instrument, instrument, data});
+			this->m_zenoh_queue.push(MEMessage {encoding, instrument, data});
 		}));
 
 	this->m_app.ws<PerSocketData>(
@@ -102,8 +100,9 @@ Phone::Phone(zenohc::Session& session)
 				auto current_item = *this->m_zenoh_queue.front();
 				auto current_topic = current_item.msg_type + ':' + current_item.instrument;
 				if (this->m_app.publish(current_topic, current_item.data, uWS::OpCode::BINARY, false)) {
-					this->m_zenoh_queue.pop();
+					
 				}
+				this->m_zenoh_queue.pop();
 			}
 		});
 	});
