@@ -35,11 +35,11 @@ struct L2Event FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
     VT_SYMBOL = 10,
     VT_TIMESTAMP = 12
   };
-  double price() const {
-    return GetField<double>(VT_PRICE, 0.0);
+  const ::flatbuffers::String *price() const {
+    return GetPointer<const ::flatbuffers::String *>(VT_PRICE);
   }
-  double qty() const {
-    return GetField<double>(VT_QTY, 0.0);
+  const ::flatbuffers::String *qty() const {
+    return GetPointer<const ::flatbuffers::String *>(VT_QTY);
   }
   bool side() const {
     return GetField<uint8_t>(VT_SIDE, 0) != 0;
@@ -52,8 +52,10 @@ struct L2Event FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   }
   bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
-           VerifyField<double>(verifier, VT_PRICE, 8) &&
-           VerifyField<double>(verifier, VT_QTY, 8) &&
+           VerifyOffset(verifier, VT_PRICE) &&
+           verifier.VerifyString(price()) &&
+           VerifyOffset(verifier, VT_QTY) &&
+           verifier.VerifyString(qty()) &&
            VerifyField<uint8_t>(verifier, VT_SIDE, 1) &&
            VerifyOffset(verifier, VT_SYMBOL) &&
            verifier.VerifyString(symbol()) &&
@@ -66,11 +68,11 @@ struct L2EventBuilder {
   typedef L2Event Table;
   ::flatbuffers::FlatBufferBuilder &fbb_;
   ::flatbuffers::uoffset_t start_;
-  void add_price(double price) {
-    fbb_.AddElement<double>(L2Event::VT_PRICE, price, 0.0);
+  void add_price(::flatbuffers::Offset<::flatbuffers::String> price) {
+    fbb_.AddOffset(L2Event::VT_PRICE, price);
   }
-  void add_qty(double qty) {
-    fbb_.AddElement<double>(L2Event::VT_QTY, qty, 0.0);
+  void add_qty(::flatbuffers::Offset<::flatbuffers::String> qty) {
+    fbb_.AddOffset(L2Event::VT_QTY, qty);
   }
   void add_side(bool side) {
     fbb_.AddElement<uint8_t>(L2Event::VT_SIDE, static_cast<uint8_t>(side), 0);
@@ -94,16 +96,16 @@ struct L2EventBuilder {
 
 inline ::flatbuffers::Offset<L2Event> CreateL2Event(
     ::flatbuffers::FlatBufferBuilder &_fbb,
-    double price = 0.0,
-    double qty = 0.0,
+    ::flatbuffers::Offset<::flatbuffers::String> price = 0,
+    ::flatbuffers::Offset<::flatbuffers::String> qty = 0,
     bool side = false,
     ::flatbuffers::Offset<::flatbuffers::String> symbol = 0,
     uint64_t timestamp = 0) {
   L2EventBuilder builder_(_fbb);
   builder_.add_timestamp(timestamp);
+  builder_.add_symbol(symbol);
   builder_.add_qty(qty);
   builder_.add_price(price);
-  builder_.add_symbol(symbol);
   builder_.add_side(side);
   return builder_.Finish();
 }
@@ -115,16 +117,18 @@ struct L2Event::Traits {
 
 inline ::flatbuffers::Offset<L2Event> CreateL2EventDirect(
     ::flatbuffers::FlatBufferBuilder &_fbb,
-    double price = 0.0,
-    double qty = 0.0,
+    const char *price = nullptr,
+    const char *qty = nullptr,
     bool side = false,
     const char *symbol = nullptr,
     uint64_t timestamp = 0) {
+  auto price__ = price ? _fbb.CreateString(price) : 0;
+  auto qty__ = qty ? _fbb.CreateString(qty) : 0;
   auto symbol__ = symbol ? _fbb.CreateString(symbol) : 0;
   return Bitwyre::Flatbuffers::L2Event::CreateL2Event(
       _fbb,
-      price,
-      qty,
+      price__,
+      qty__,
       side,
       symbol__,
       timestamp);
@@ -132,8 +136,8 @@ inline ::flatbuffers::Offset<L2Event> CreateL2EventDirect(
 
 inline const ::flatbuffers::TypeTable *L2EventTypeTable() {
   static const ::flatbuffers::TypeCode type_codes[] = {
-    { ::flatbuffers::ET_DOUBLE, 0, -1 },
-    { ::flatbuffers::ET_DOUBLE, 0, -1 },
+    { ::flatbuffers::ET_STRING, 0, -1 },
+    { ::flatbuffers::ET_STRING, 0, -1 },
     { ::flatbuffers::ET_BOOL, 0, -1 },
     { ::flatbuffers::ET_STRING, 0, -1 },
     { ::flatbuffers::ET_ULONG, 0, -1 }

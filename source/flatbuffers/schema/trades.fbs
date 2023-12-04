@@ -1,8 +1,8 @@
 namespace Bitwyre.Flatbuffers.trades;
 
 table trades {
-    price: float64;
-    qty: float64;
+    price: string;
+    qty: string;
     value: float64;
     tradeType: bool;
     symbol: string;

@@ -26,6 +26,7 @@ Phone::Phone(zenohc::Session& session)
 			// TODO: Flatbuffers (magic + testing)
 			// Try to remove this un-wanted heap allocation
 			std::string encoding {sample.get_encoding().get_suffix().as_string_view()};
+			std::string datacopy {sample.get_payload().as_string_view()};
 			std::string data {};
 			std::string instrument {};
 
@@ -36,31 +37,31 @@ Phone::Phone(zenohc::Session& session)
 
 			} else if (encoding == "l2_events") {
 				auto data_flatbuf =
-					Bitwyre::Flatbuffers::L2Event::GetL2Event(sample.get_payload().as_string_view().data());
+					Bitwyre::Flatbuffers::L2Event::GetL2Event(datacopy.c_str());
 				instrument = data_flatbuf->symbol()->str();
 				data = FBHandler::flatbuf_to_json<Bitwyre::Flatbuffers::L2Event::L2Event>(
 					sample.get_payload().start, sample.get_payload().get_len());
 
 			} else if (encoding == "l3_events") {
 				auto data_flatbuf =
-					Bitwyre::Flatbuffers::L3Event::GetL3Event(sample.get_payload().as_string_view().data());
+					Bitwyre::Flatbuffers::L3Event::GetL3Event(datacopy.c_str());
 				instrument = data_flatbuf->symbol()->str();
-				data = FBHandler::flatbuf_to_json<Bitwyre::Flatbuffers::L2Event::L2Event>(
+				data = FBHandler::flatbuf_to_json<Bitwyre::Flatbuffers::L3Event::L3Event>(
 					sample.get_payload().start, sample.get_payload().get_len());
 
 			} else if (encoding == "trades") {
 				auto data_flatbuf =
-					Bitwyre::Flatbuffers::trades::Gettrades(sample.get_payload().as_string_view().data());
+					Bitwyre::Flatbuffers::trades::Gettrades(datacopy.c_str());
 				instrument = data_flatbuf->symbol()->str();
-				data = FBHandler::flatbuf_to_json<Bitwyre::Flatbuffers::L2Event::L2Event>(
+				data = FBHandler::flatbuf_to_json<Bitwyre::Flatbuffers::trades::trades>(
 					sample.get_payload().start, sample.get_payload().get_len());
 
 			} else if (encoding == "depthl2" || encoding == "depthl2_10" || encoding == "depthl2_25" ||
 					   encoding == "depthl2_50" || encoding == "depthl2_100") {
 				auto data_flatbuf =
-					Bitwyre::Flatbuffers::Depthl2::GetDepthEvent(sample.get_payload().as_string_view().data());
+					Bitwyre::Flatbuffers::Depthl2::GetDepthEvent(datacopy.c_str());
 				instrument = data_flatbuf->data()->instrument()->str();
-				data = FBHandler::flatbuf_to_json<Bitwyre::Flatbuffers::L2Event::L2Event>(
+				data = FBHandler::flatbuf_to_json<Bitwyre::Flatbuffers::Depthl2::DepthEvent>(
 					sample.get_payload().start, sample.get_payload().get_len());
 			}
 

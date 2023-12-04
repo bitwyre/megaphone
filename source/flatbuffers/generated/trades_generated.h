@@ -36,11 +36,11 @@ struct trades FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
     VT_SYMBOL = 12,
     VT_TIMESTAMP = 14
   };
-  double price() const {
-    return GetField<double>(VT_PRICE, 0.0);
+  const ::flatbuffers::String *price() const {
+    return GetPointer<const ::flatbuffers::String *>(VT_PRICE);
   }
-  double qty() const {
-    return GetField<double>(VT_QTY, 0.0);
+  const ::flatbuffers::String *qty() const {
+    return GetPointer<const ::flatbuffers::String *>(VT_QTY);
   }
   double value() const {
     return GetField<double>(VT_VALUE, 0.0);
@@ -56,8 +56,10 @@ struct trades FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   }
   bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
-           VerifyField<double>(verifier, VT_PRICE, 8) &&
-           VerifyField<double>(verifier, VT_QTY, 8) &&
+           VerifyOffset(verifier, VT_PRICE) &&
+           verifier.VerifyString(price()) &&
+           VerifyOffset(verifier, VT_QTY) &&
+           verifier.VerifyString(qty()) &&
            VerifyField<double>(verifier, VT_VALUE, 8) &&
            VerifyField<uint8_t>(verifier, VT_TRADETYPE, 1) &&
            VerifyOffset(verifier, VT_SYMBOL) &&
@@ -71,11 +73,11 @@ struct tradesBuilder {
   typedef trades Table;
   ::flatbuffers::FlatBufferBuilder &fbb_;
   ::flatbuffers::uoffset_t start_;
-  void add_price(double price) {
-    fbb_.AddElement<double>(trades::VT_PRICE, price, 0.0);
+  void add_price(::flatbuffers::Offset<::flatbuffers::String> price) {
+    fbb_.AddOffset(trades::VT_PRICE, price);
   }
-  void add_qty(double qty) {
-    fbb_.AddElement<double>(trades::VT_QTY, qty, 0.0);
+  void add_qty(::flatbuffers::Offset<::flatbuffers::String> qty) {
+    fbb_.AddOffset(trades::VT_QTY, qty);
   }
   void add_value(double value) {
     fbb_.AddElement<double>(trades::VT_VALUE, value, 0.0);
@@ -102,8 +104,8 @@ struct tradesBuilder {
 
 inline ::flatbuffers::Offset<trades> Createtrades(
     ::flatbuffers::FlatBufferBuilder &_fbb,
-    double price = 0.0,
-    double qty = 0.0,
+    ::flatbuffers::Offset<::flatbuffers::String> price = 0,
+    ::flatbuffers::Offset<::flatbuffers::String> qty = 0,
     double value = 0.0,
     bool tradeType = false,
     ::flatbuffers::Offset<::flatbuffers::String> symbol = 0,
@@ -111,9 +113,9 @@ inline ::flatbuffers::Offset<trades> Createtrades(
   tradesBuilder builder_(_fbb);
   builder_.add_timestamp(timestamp);
   builder_.add_value(value);
+  builder_.add_symbol(symbol);
   builder_.add_qty(qty);
   builder_.add_price(price);
-  builder_.add_symbol(symbol);
   builder_.add_tradeType(tradeType);
   return builder_.Finish();
 }
@@ -125,17 +127,19 @@ struct trades::Traits {
 
 inline ::flatbuffers::Offset<trades> CreatetradesDirect(
     ::flatbuffers::FlatBufferBuilder &_fbb,
-    double price = 0.0,
-    double qty = 0.0,
+    const char *price = nullptr,
+    const char *qty = nullptr,
     double value = 0.0,
     bool tradeType = false,
     const char *symbol = nullptr,
     uint64_t timestamp = 0) {
+  auto price__ = price ? _fbb.CreateString(price) : 0;
+  auto qty__ = qty ? _fbb.CreateString(qty) : 0;
   auto symbol__ = symbol ? _fbb.CreateString(symbol) : 0;
   return Bitwyre::Flatbuffers::trades::Createtrades(
       _fbb,
-      price,
-      qty,
+      price__,
+      qty__,
       value,
       tradeType,
       symbol__,
@@ -144,8 +148,8 @@ inline ::flatbuffers::Offset<trades> CreatetradesDirect(
 
 inline const ::flatbuffers::TypeTable *tradesTypeTable() {
   static const ::flatbuffers::TypeCode type_codes[] = {
-    { ::flatbuffers::ET_DOUBLE, 0, -1 },
-    { ::flatbuffers::ET_DOUBLE, 0, -1 },
+    { ::flatbuffers::ET_STRING, 0, -1 },
+    { ::flatbuffers::ET_STRING, 0, -1 },
     { ::flatbuffers::ET_DOUBLE, 0, -1 },
     { ::flatbuffers::ET_BOOL, 0, -1 },
     { ::flatbuffers::ET_STRING, 0, -1 },

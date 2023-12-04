@@ -38,11 +38,11 @@ struct L3Event FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
     VT_ORDER_ID = 16,
     VT_TIMESTAMP = 18
   };
-  double price() const {
-    return GetField<double>(VT_PRICE, 0.0);
+  const ::flatbuffers::String *price() const {
+    return GetPointer<const ::flatbuffers::String *>(VT_PRICE);
   }
-  double qty() const {
-    return GetField<double>(VT_QTY, 0.0);
+  const ::flatbuffers::String *qty() const {
+    return GetPointer<const ::flatbuffers::String *>(VT_QTY);
   }
   bool side() const {
     return GetField<uint8_t>(VT_SIDE, 0) != 0;
@@ -64,8 +64,10 @@ struct L3Event FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   }
   bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
-           VerifyField<double>(verifier, VT_PRICE, 8) &&
-           VerifyField<double>(verifier, VT_QTY, 8) &&
+           VerifyOffset(verifier, VT_PRICE) &&
+           verifier.VerifyString(price()) &&
+           VerifyOffset(verifier, VT_QTY) &&
+           verifier.VerifyString(qty()) &&
            VerifyField<uint8_t>(verifier, VT_SIDE, 1) &&
            VerifyOffset(verifier, VT_SYMBOL) &&
            verifier.VerifyString(symbol()) &&
@@ -82,11 +84,11 @@ struct L3EventBuilder {
   typedef L3Event Table;
   ::flatbuffers::FlatBufferBuilder &fbb_;
   ::flatbuffers::uoffset_t start_;
-  void add_price(double price) {
-    fbb_.AddElement<double>(L3Event::VT_PRICE, price, 0.0);
+  void add_price(::flatbuffers::Offset<::flatbuffers::String> price) {
+    fbb_.AddOffset(L3Event::VT_PRICE, price);
   }
-  void add_qty(double qty) {
-    fbb_.AddElement<double>(L3Event::VT_QTY, qty, 0.0);
+  void add_qty(::flatbuffers::Offset<::flatbuffers::String> qty) {
+    fbb_.AddOffset(L3Event::VT_QTY, qty);
   }
   void add_side(bool side) {
     fbb_.AddElement<uint8_t>(L3Event::VT_SIDE, static_cast<uint8_t>(side), 0);
@@ -119,8 +121,8 @@ struct L3EventBuilder {
 
 inline ::flatbuffers::Offset<L3Event> CreateL3Event(
     ::flatbuffers::FlatBufferBuilder &_fbb,
-    double price = 0.0,
-    double qty = 0.0,
+    ::flatbuffers::Offset<::flatbuffers::String> price = 0,
+    ::flatbuffers::Offset<::flatbuffers::String> qty = 0,
     bool side = false,
     ::flatbuffers::Offset<::flatbuffers::String> symbol = 0,
     uint64_t sequence = 0,
@@ -130,10 +132,10 @@ inline ::flatbuffers::Offset<L3Event> CreateL3Event(
   L3EventBuilder builder_(_fbb);
   builder_.add_timestamp(timestamp);
   builder_.add_sequence(sequence);
-  builder_.add_qty(qty);
-  builder_.add_price(price);
   builder_.add_order_id(order_id);
   builder_.add_symbol(symbol);
+  builder_.add_qty(qty);
+  builder_.add_price(price);
   builder_.add_type(type);
   builder_.add_side(side);
   return builder_.Finish();
@@ -146,20 +148,22 @@ struct L3Event::Traits {
 
 inline ::flatbuffers::Offset<L3Event> CreateL3EventDirect(
     ::flatbuffers::FlatBufferBuilder &_fbb,
-    double price = 0.0,
-    double qty = 0.0,
+    const char *price = nullptr,
+    const char *qty = nullptr,
     bool side = false,
     const char *symbol = nullptr,
     uint64_t sequence = 0,
     uint8_t type = 0,
     const char *order_id = nullptr,
     uint64_t timestamp = 0) {
+  auto price__ = price ? _fbb.CreateString(price) : 0;
+  auto qty__ = qty ? _fbb.CreateString(qty) : 0;
   auto symbol__ = symbol ? _fbb.CreateString(symbol) : 0;
   auto order_id__ = order_id ? _fbb.CreateString(order_id) : 0;
   return Bitwyre::Flatbuffers::L3Event::CreateL3Event(
       _fbb,
-      price,
-      qty,
+      price__,
+      qty__,
       side,
       symbol__,
       sequence,
@@ -170,8 +174,8 @@ inline ::flatbuffers::Offset<L3Event> CreateL3EventDirect(
 
 inline const ::flatbuffers::TypeTable *L3EventTypeTable() {
   static const ::flatbuffers::TypeCode type_codes[] = {
-    { ::flatbuffers::ET_DOUBLE, 0, -1 },
-    { ::flatbuffers::ET_DOUBLE, 0, -1 },
+    { ::flatbuffers::ET_STRING, 0, -1 },
+    { ::flatbuffers::ET_STRING, 0, -1 },
     { ::flatbuffers::ET_BOOL, 0, -1 },
     { ::flatbuffers::ET_STRING, 0, -1 },
     { ::flatbuffers::ET_ULONG, 0, -1 },

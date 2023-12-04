@@ -1,0 +1,18 @@
+namespace Bitwyre.Flatbuffers.Ticker;
+
+table TickerEvent {
+    last_price: string;
+    instrument: string;
+    base_asset: string;
+    quote_asset: string;
+    high_price: string;
+    low_price: string;
+    pct_change: string;
+    vol_qty_base: string;
+    vol_qty_quote: string;
+    bid_price: string;
+    ask_price: string;
+    timestamp: uint64;
+}
+
+root_type TickerEvent;
