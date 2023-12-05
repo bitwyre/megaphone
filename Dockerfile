@@ -29,7 +29,8 @@ COPY ./entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/megaphone /usr/local/bin/entrypoint.sh
 
 ENV MEGAPHONE_UWS_PASSPHRASE=12345
-ENV MEGAPHONE_SUPPORTED_INSTRUMENTS=btc_usdt_spot
+# TODO: Find a better way to do this.
+ENV MEGAPHONE_SUPPORTED_INSTRUMENTS=ada_usdt_spot,ada_usdx_futures_perp,algo_usdx_futures_perp,arb_usdx_futures_perp,audf_jidr_spot,avax_usdt_spot,avax_usdx_futures_perp,bidr_idr_spot,bnb_usdt_spot,bnb_usdx_futures_perp,btc_usdt_spot,btc_usdt_spot,btc_usdt_spot,btc_usdt_spot,btc_usdt_spot,btc_usdx_futures_perp,btc_usdx_futures_perp,btc_usdx_futures_perp,btc_usdx_futures_perp,btc_usdx_futures_perp,busd_usd_spot,cnli_usd_spot,crv_usdx_futures_perp,doge_usdx_futures_perp,dot_usdx_futures_perp
 
 EXPOSE 8080
 ENTRYPOINT ["entrypoint.sh"]
