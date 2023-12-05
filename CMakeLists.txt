@@ -12,6 +12,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(MEGAPHONE_ENABLE_TESTS OFF "Enable Catch2 tests")
+option(MEGAPHONE_ENABLE_ASAN OFF "Enable libasan")
 
 include(cmake/FetchPackages.cmake)
 
@@ -32,13 +33,18 @@ set(COMPILER_FLAGS
     # Except for the ones that aren't mine
     -Wno-deprecated -Wno-unused-parameter -Wno-deprecated-declarations
     -Wno-macro-redefined
-    # Add asan options
-    -fsanitize=address -fsanitize=pointer-compare
-    -fsanitize=pointer-subtract -fsanitize=float-divide-by-zero
-    -fsanitize=float-cast-overflow
     # Stack pointer
     -fno-omit-frame-pointer
 )
+
+if(MEGAPHONE_ENABLE_ASAN)
+    list(APPEND COMPILER_FLAGS
+        # Add asan options
+        -fsanitize=address -fsanitize=pointer-compare
+        -fsanitize=pointer-subtract -fsanitize=float-divide-by-zero
+        -fsanitize=float-cast-overflow
+    )
+endif()
 
 target_compile_options(megaphone PUBLIC ${COMPILER_FLAGS})
 target_link_options(megaphone PUBLIC ${COMPILER_FLAGS})
@@ -60,8 +66,6 @@ target_link_libraries(phone
     PUBLIC flatbuffers
 )
 target_link_libraries(megaphone PUBLIC phone)
-
-
 
 # Turn clang-tidy off/on
 if (USE_CLANG_TIDY)
