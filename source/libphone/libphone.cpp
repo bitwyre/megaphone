@@ -68,7 +68,7 @@ Phone::Phone(zenohc::Session& session)
 					sample.get_payload().start, sample.get_payload().get_len());
 			}
 
-			SPDLOG_INFO("Event type: {}\n\tData: {}\n\tInstrument: {}", encoding, data, instrument);
+			SPDLOG_DEBUG("Event type: {}\n\tData: {}\n\tInstrument: {}", encoding, data, instrument);
 
 			this->m_zenoh_queue.push(MEMessage {encoding, instrument, data});
 		}));
@@ -104,7 +104,7 @@ Phone::Phone(zenohc::Session& session)
 			if (this->m_zenoh_queue.front() != nullptr) {
 				auto current_item = *this->m_zenoh_queue.front();
 				auto current_topic = current_item.msg_type + ':' + current_item.instrument;
-				if (this->m_app.publish(current_topic, current_item.data, uWS::OpCode::BINARY, false)) {
+				if (this->m_app.publish(current_topic, current_item.data, uWS::OpCode::TEXT, false)) {
 					
 				}
 				this->m_zenoh_queue.pop();
