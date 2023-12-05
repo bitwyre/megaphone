@@ -48,13 +48,13 @@ public:
 
 				const auto& event_data = data_flatbuf->data();
 				if (event_data->asks()->size() <= 0)
-					return "Invalid DepthL2 event received, no asks.";
+					return flatbuffers::FlatBufferToString(buf, type_table);
 				else if (event_data->bids()->size() <= 0)
-					return "Invalid DepthL2 event received, no bids.";
+					return flatbuffers::FlatBufferToString(buf, type_table);
 				else if (event_data->sequence() == 0)
 					return flatbuffers::FlatBufferToString(buf, type_table);
 				else
-					return flatbuffers::FlatBufferToString(buf, type_table);
+					return "Invalid buffer received, PLEASE REPORT THIS to the provider";
 			}
 
 			return flatbuffers::FlatBufferToString(buf, type_table);

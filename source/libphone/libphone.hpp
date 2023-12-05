@@ -13,7 +13,7 @@
 #include "serializer/serializer.hpp"
 #include "utils/utils.hpp"
 
-constexpr auto PORT = 8080;
+constexpr auto PORT = 7447;
 #define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_DEBUG
 
 namespace LibPhone {

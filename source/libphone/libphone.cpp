@@ -68,7 +68,7 @@ Phone::Phone(zenohc::Session& session)
 					sample.get_payload().start, sample.get_payload().get_len());
 			}
 
-			SPDLOG_DEBUG("Event type: {}\n\tData: {}\n\tInstrument: {}", encoding, data, instrument);
+			SPDLOG_INFO("Event type: {}\n\tData: {}\n\tInstrument: {}", encoding, data, instrument);
 
 			this->m_zenoh_queue.push(MEMessage {encoding, instrument, data});
 		}));
@@ -77,7 +77,7 @@ Phone::Phone(zenohc::Session& session)
 		"/*",
 		{.compression = uWS::DISABLED,
 		 .maxPayloadLength = 16 * 1024 * 1024,
-		 .idleTimeout = 16,
+		 .idleTimeout = 960,
 		 .maxBackpressure = 1 * 1024 * 1024,
 		 .closeOnBackpressureLimit = false,
 		 .resetIdleTimeoutOnSend = false,
