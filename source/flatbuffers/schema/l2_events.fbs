@@ -1,0 +1,11 @@
+namespace Bitwyre.Flatbuffers.L2Event;
+
+table L2Event {
+    price: string;
+    qty: string;
+    side: bool;
+    symbol: string;
+    timestamp: uint64;
+} 
+
+root_type L2Event;

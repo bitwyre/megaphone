@@ -1,0 +1,31 @@
+namespace Bitwyre.Flatbuffers.Depthl2;
+
+// Definition for AskPrice
+table AskPrice {
+  price: double;
+  qty: double;
+}
+
+// Definition for BidPrice
+table BidPrice {
+  price: double;
+  qty: double;
+}
+
+// Definition for DepthData
+table DepthData {
+  instrument: string;
+  sequence: ulong;
+  is_frozen: bool;
+  bids: [BidPrice];
+  asks: [AskPrice];
+}
+
+// Definition for DepthEvent
+table DepthEvent {
+  table: string;
+  action: string;
+  data: DepthData;
+}
+
+root_type DepthEvent;
