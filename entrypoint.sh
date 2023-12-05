@@ -3,4 +3,4 @@
 # inject vault to env
 . /vault/secrets/config
 
-/megaphone/megaphone /megaphone/zenohpico.json5
+/usr/local/bin/megaphone /usr/local/bin/zenohpico.json5
