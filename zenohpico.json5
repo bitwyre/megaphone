@@ -1,6 +1,6 @@
 {
   mode: "peer",
   connect: {
-    endpoints: ["tcp/localhost:8080"],
+    endpoints: ["tcp/localhost:1337"],
   }
 }
