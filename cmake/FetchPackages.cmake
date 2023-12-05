@@ -2,12 +2,14 @@ cmake_minimum_required(VERSION 3.22)
 
 # Fetching all the deps
 include(FetchContent)
+if (MEGAPHONE_ENABLE_TESTS)
 # Fetch dependancy: Catch2
 FetchContent_Declare(
     Catch2
     GIT_REPOSITORY https://github.com/catchorg/Catch2.git
     GIT_TAG        v3.4.0
 )
+endif()
 
 # Fetch dependancy: Spdlog
 FetchContent_Declare(
@@ -74,7 +76,9 @@ FetchContent_Declare(
     GIT_TAG        f9d5341
 )
 
-FetchContent_MakeAvailable(Catch2)
+if (MEGAPHONE_ENABLE_TESTS)
+    FetchContent_MakeAvailable(Catch2)
+endif()
 FetchContent_MakeAvailable(spdlog)
 FetchContent_MakeAvailable(zenohc_backend)
 FetchContent_MakeAvailable(zenohpico_backend)
