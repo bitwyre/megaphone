@@ -21,11 +21,15 @@ RUN make -j`nproc`
 FROM ubuntu:latest
 
 WORKDIR /megaphone
-COPY --from=build /megaphone/build/megaphone /usr/local/bin/megaphone
+COPY --from=build /megaphone/build/ /usr/local/bin/
+COPY --from=build /megaphone/build/_deps/zenohc_backend-build/release/target/release/libzenohc.so /usr/local/bin/libzenohc.so
 COPY --from=build /megaphone/zenohpico.json5 /usr/local/bin/zenohpico.json5
 COPY ./entrypoint.sh /usr/local/bin/entrypoint.sh
 
 RUN chmod +x /usr/local/bin/megaphone /usr/local/bin/entrypoint.sh
-RUN echo ". /vault/secrets/config" > /root/.bashrc
 
+ENV MEGAPHONE_UWS_PASSPHRASE=12345
+ENV MEGAPHONE_SUPPORTED_INSTRUMENTS=btc_usdt_spot
+
+EXPOSE 8080
 ENTRYPOINT ["entrypoint.sh"]
