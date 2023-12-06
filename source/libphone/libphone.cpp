@@ -18,6 +18,10 @@ Phone::Phone(zenohc::Session& session)
 	  m_supported_instruments(utils::ENVManager::get_instance().get_megaphone_supported_instruments()),
 	  m_serializer(),
 	  m_zenoh_subscriber(nullptr) {
+		SPDLOG_INFO("Supported instruments:");
+		for (auto& instrument : this->m_supported_instruments) {
+			SPDLOG_INFO("\t{}", instrument);
+		}
 
 	this->m_zenoh_subscriber = zenohc::expect<zenohc::Subscriber>(
 		session.declare_subscriber("bitwyre/megaphone/websockets", [&](const zenohc::Sample& sample) {
@@ -73,11 +77,12 @@ Phone::Phone(zenohc::Session& session)
 			this->m_zenoh_queue.push(MEMessage {encoding, instrument, data});
 		}));
 
+
 	this->m_app.ws<PerSocketData>(
 		"/*",
 		{.compression = uWS::DISABLED,
 		 .maxPayloadLength = 16 * 1024 * 1024,
-		 .idleTimeout = 960,
+		 .idleTimeout = 16,
 		 .maxBackpressure = 1 * 1024 * 1024,
 		 .closeOnBackpressureLimit = false,
 		 .resetIdleTimeoutOnSend = false,
