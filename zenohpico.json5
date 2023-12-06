@@ -1,6 +1,6 @@
 {
   mode: "peer",
-  connect: {
-    endpoints: ["tcp/localhost:1337"],
+  listen: {
+    endpoints: ["tcp/0.0.0.0:1337"]
   }
 }
