@@ -82,7 +82,7 @@ Phone::Phone(zenohc::Session& session)
 		"/*",
 		{.compression = uWS::DISABLED,
 		 .maxPayloadLength = 16 * 1024 * 1024,
-		 .idleTimeout = 16,
+		 .idleTimeout = 960,
 		 .maxBackpressure = 1 * 1024 * 1024,
 		 .closeOnBackpressureLimit = false,
 		 .resetIdleTimeoutOnSend = false,
