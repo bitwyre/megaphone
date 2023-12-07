@@ -29,13 +29,22 @@ struct trades FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
     return tradesTypeTable();
   }
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
-    VT_PRICE = 4,
-    VT_QTY = 6,
-    VT_VALUE = 8,
-    VT_TRADETYPE = 10,
-    VT_SYMBOL = 12,
-    VT_TIMESTAMP = 14
+    VT_TABLE = 4,
+    VT_ACTION = 6,
+    VT_PRICE = 8,
+    VT_QTY = 10,
+    VT_VALUE = 12,
+    VT_TRADETYPE = 14,
+    VT_SYMBOL = 16,
+    VT_TIMESTAMP = 18,
+    VT_SIDE = 20
   };
+  const ::flatbuffers::String *table() const {
+    return GetPointer<const ::flatbuffers::String *>(VT_TABLE);
+  }
+  const ::flatbuffers::String *action() const {
+    return GetPointer<const ::flatbuffers::String *>(VT_ACTION);
+  }
   const ::flatbuffers::String *price() const {
     return GetPointer<const ::flatbuffers::String *>(VT_PRICE);
   }
@@ -54,8 +63,15 @@ struct trades FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   uint64_t timestamp() const {
     return GetField<uint64_t>(VT_TIMESTAMP, 0);
   }
+  int32_t side() const {
+    return GetField<int32_t>(VT_SIDE, 0);
+  }
   bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
+           VerifyOffset(verifier, VT_TABLE) &&
+           verifier.VerifyString(table()) &&
+           VerifyOffset(verifier, VT_ACTION) &&
+           verifier.VerifyString(action()) &&
            VerifyOffset(verifier, VT_PRICE) &&
            verifier.VerifyString(price()) &&
            VerifyOffset(verifier, VT_QTY) &&
@@ -65,6 +81,7 @@ struct trades FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
            VerifyOffset(verifier, VT_SYMBOL) &&
            verifier.VerifyString(symbol()) &&
            VerifyField<uint64_t>(verifier, VT_TIMESTAMP, 8) &&
+           VerifyField<int32_t>(verifier, VT_SIDE, 4) &&
            verifier.EndTable();
   }
 };
@@ -73,6 +90,12 @@ struct tradesBuilder {
   typedef trades Table;
   ::flatbuffers::FlatBufferBuilder &fbb_;
   ::flatbuffers::uoffset_t start_;
+  void add_table(::flatbuffers::Offset<::flatbuffers::String> table) {
+    fbb_.AddOffset(trades::VT_TABLE, table);
+  }
+  void add_action(::flatbuffers::Offset<::flatbuffers::String> action) {
+    fbb_.AddOffset(trades::VT_ACTION, action);
+  }
   void add_price(::flatbuffers::Offset<::flatbuffers::String> price) {
     fbb_.AddOffset(trades::VT_PRICE, price);
   }
@@ -91,6 +114,9 @@ struct tradesBuilder {
   void add_timestamp(uint64_t timestamp) {
     fbb_.AddElement<uint64_t>(trades::VT_TIMESTAMP, timestamp, 0);
   }
+  void add_side(int32_t side) {
+    fbb_.AddElement<int32_t>(trades::VT_SIDE, side, 0);
+  }
   explicit tradesBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
     start_ = fbb_.StartTable();
@@ -104,18 +130,24 @@ struct tradesBuilder {
 
 inline ::flatbuffers::Offset<trades> Createtrades(
     ::flatbuffers::FlatBufferBuilder &_fbb,
+    ::flatbuffers::Offset<::flatbuffers::String> table = 0,
+    ::flatbuffers::Offset<::flatbuffers::String> action = 0,
     ::flatbuffers::Offset<::flatbuffers::String> price = 0,
     ::flatbuffers::Offset<::flatbuffers::String> qty = 0,
     double value = 0.0,
     bool tradeType = false,
     ::flatbuffers::Offset<::flatbuffers::String> symbol = 0,
-    uint64_t timestamp = 0) {
+    uint64_t timestamp = 0,
+    int32_t side = 0) {
   tradesBuilder builder_(_fbb);
   builder_.add_timestamp(timestamp);
   builder_.add_value(value);
+  builder_.add_side(side);
   builder_.add_symbol(symbol);
   builder_.add_qty(qty);
   builder_.add_price(price);
+  builder_.add_action(action);
+  builder_.add_table(table);
   builder_.add_tradeType(tradeType);
   return builder_.Finish();
 }
@@ -127,44 +159,58 @@ struct trades::Traits {
 
 inline ::flatbuffers::Offset<trades> CreatetradesDirect(
     ::flatbuffers::FlatBufferBuilder &_fbb,
+    const char *table = nullptr,
+    const char *action = nullptr,
     const char *price = nullptr,
     const char *qty = nullptr,
     double value = 0.0,
     bool tradeType = false,
     const char *symbol = nullptr,
-    uint64_t timestamp = 0) {
+    uint64_t timestamp = 0,
+    int32_t side = 0) {
+  auto table__ = table ? _fbb.CreateString(table) : 0;
+  auto action__ = action ? _fbb.CreateString(action) : 0;
   auto price__ = price ? _fbb.CreateString(price) : 0;
   auto qty__ = qty ? _fbb.CreateString(qty) : 0;
   auto symbol__ = symbol ? _fbb.CreateString(symbol) : 0;
   return Bitwyre::Flatbuffers::trades::Createtrades(
       _fbb,
+      table__,
+      action__,
       price__,
       qty__,
       value,
       tradeType,
       symbol__,
-      timestamp);
+      timestamp,
+      side);
 }
 
 inline const ::flatbuffers::TypeTable *tradesTypeTable() {
   static const ::flatbuffers::TypeCode type_codes[] = {
     { ::flatbuffers::ET_STRING, 0, -1 },
     { ::flatbuffers::ET_STRING, 0, -1 },
+    { ::flatbuffers::ET_STRING, 0, -1 },
+    { ::flatbuffers::ET_STRING, 0, -1 },
     { ::flatbuffers::ET_DOUBLE, 0, -1 },
     { ::flatbuffers::ET_BOOL, 0, -1 },
     { ::flatbuffers::ET_STRING, 0, -1 },
-    { ::flatbuffers::ET_ULONG, 0, -1 }
+    { ::flatbuffers::ET_ULONG, 0, -1 },
+    { ::flatbuffers::ET_INT, 0, -1 }
   };
   static const char * const names[] = {
+    "table",
+    "action",
     "price",
     "qty",
     "value",
     "tradeType",
     "symbol",
-    "timestamp"
+    "timestamp",
+    "side"
   };
   static const ::flatbuffers::TypeTable tt = {
-    ::flatbuffers::ST_TABLE, 6, type_codes, nullptr, nullptr, nullptr, names
+    ::flatbuffers::ST_TABLE, 9, type_codes, nullptr, nullptr, nullptr, names
   };
   return &tt;
 }

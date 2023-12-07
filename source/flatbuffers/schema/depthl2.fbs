@@ -2,14 +2,14 @@ namespace Bitwyre.Flatbuffers.Depthl2;
 
 // Definition for AskPrice
 table AskPrice {
-  price: double;
-  qty: double;
+  price: string;
+  qty: string;
 }
 
 // Definition for BidPrice
 table BidPrice {
-  price: double;
-  qty: double;
+  price: string;
+  qty: string;
 }
 
 // Definition for DepthData

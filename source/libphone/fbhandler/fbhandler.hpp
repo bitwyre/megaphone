@@ -12,8 +12,8 @@
 #include "depthl2_generated.h"
 #include "l2_events_generated.h"
 #include "l3_events_generated.h"
-#include "trades_generated.h"
 #include "ticker_generated.h"
+#include "trades_generated.h"
 
 #include <iostream>
 
@@ -32,66 +32,51 @@ public:
 	FBHandler operator=(const FBHandler&) = delete;
 	FBHandler operator=(FBHandler&&) noexcept = delete;
 
-	template <typename FlatBufType>
+	template <typename flat_buf_type>
 	[[nodiscard]] static auto flatbuf_to_json(const uint8_t* buf, const auto size) -> std::string {
 		const flatbuffers::TypeTable* type_table = nullptr;
+		flatbuffers::ToStringVisitor flatbuf_visitor {" ", true, ""};
 		auto verifier = flatbuffers::Verifier(buf, size);
 
-		if constexpr (std::is_same_v<FlatBufType, Bitwyre::Flatbuffers::Depthl2::DepthEvent>) {
+		auto handle_invalid_buffer = [&]() { return "Invalid buffer received, PLEASE REPORT THIS to the provider"; };
+
+		auto process_valid_buffer = [&](auto&& data_flatbuf) {
+			IterateFlatBuffer(buf, type_table, &flatbuf_visitor);
+			return flatbuf_visitor.s;
+		};
+
+		if constexpr (std::is_same_v<flat_buf_type, Bitwyre::Flatbuffers::Depthl2::DepthEvent>) {
 			type_table = Bitwyre::Flatbuffers::Depthl2::DepthEventTypeTable();
 			if (Bitwyre::Flatbuffers::Depthl2::VerifyDepthEventBuffer(verifier)) {
-				return flatbuffers::FlatBufferToString(buf, type_table);
+				return process_valid_buffer(Bitwyre::Flatbuffers::Depthl2::GetDepthEvent(buf));
 			} else {
-				// Extra checks for vectors and whatnot
-				auto data_flatbuf =
-					Bitwyre::Flatbuffers::Depthl2::GetDepthEvent(buf);
-
-				const auto& event_data = data_flatbuf->data();
-				if (event_data->asks()->size() <= 0)
-					return flatbuffers::FlatBufferToString(buf, type_table);
-				else if (event_data->bids()->size() <= 0)
-					return flatbuffers::FlatBufferToString(buf, type_table);
-				else if (event_data->sequence() == 0)
-					return flatbuffers::FlatBufferToString(buf, type_table);
-				else
-					return "Invalid buffer received, PLEASE REPORT THIS to the provider";
+				auto event_data = Bitwyre::Flatbuffers::Depthl2::GetDepthEvent(buf)->data();
+				if (event_data->asks()->size() <= 0 || event_data->bids()->size() <= 0 || event_data->sequence() == 0) {
+					return process_valid_buffer(Bitwyre::Flatbuffers::Depthl2::GetDepthEvent(buf));
+				} else {
+					return handle_invalid_buffer();
+				}
 			}
-
-			return flatbuffers::FlatBufferToString(buf, type_table);
-		} else if constexpr (std::is_same_v<FlatBufType, Bitwyre::Flatbuffers::L2Event::L2Event>) {
+		} else if constexpr (std::is_same_v<flat_buf_type, Bitwyre::Flatbuffers::L2Event::L2Event>) {
 			type_table = Bitwyre::Flatbuffers::L2Event::L2EventTypeTable();
-			if (Bitwyre::Flatbuffers::L2Event::VerifyL2EventBuffer(verifier))
-				return flatbuffers::FlatBufferToString(buf, type_table);
-			else
-				return "Invalid buffer received, PLEASE REPORT THIS to the provider";
-
-		} else if constexpr (std::is_same_v<FlatBufType, Bitwyre::Flatbuffers::L3Event::L3Event>) {
+			return Bitwyre::Flatbuffers::L2Event::VerifyL2EventBuffer(verifier) ? process_valid_buffer(nullptr)
+																				: handle_invalid_buffer();
+		} else if constexpr (std::is_same_v<flat_buf_type, Bitwyre::Flatbuffers::L3Event::L3Event>) {
 			type_table = Bitwyre::Flatbuffers::L3Event::L3EventTypeTable();
-			if (Bitwyre::Flatbuffers::L3Event::VerifyL3EventBuffer(verifier))
-				return flatbuffers::FlatBufferToString(buf, type_table);
-			else
-				return "Invalid buffer received, PLEASE REPORT THIS to the provider";
-
-		} else if constexpr (std::is_same_v<FlatBufType, Bitwyre::Flatbuffers::trades::trades>) {
+			return Bitwyre::Flatbuffers::L3Event::VerifyL3EventBuffer(verifier) ? process_valid_buffer(nullptr)
+																				: handle_invalid_buffer();
+		} else if constexpr (std::is_same_v<flat_buf_type, Bitwyre::Flatbuffers::trades::trades>) {
 			type_table = Bitwyre::Flatbuffers::trades::tradesTypeTable();
-			if (Bitwyre::Flatbuffers::trades::VerifytradesBuffer(verifier))
-				return flatbuffers::FlatBufferToString(buf, type_table);
-			else
-				return "Invalid buffer received, PLEASE REPORT THIS to the provider";
-
-		} else if constexpr (std::is_same_v<FlatBufType, Bitwyre::Flatbuffers::Ticker::TickerEvent>) {
+			return Bitwyre::Flatbuffers::trades::VerifytradesBuffer(verifier) ? process_valid_buffer(nullptr)
+																			  : handle_invalid_buffer();
+		} else if constexpr (std::is_same_v<flat_buf_type, Bitwyre::Flatbuffers::Ticker::TickerEvent>) {
 			type_table = Bitwyre::Flatbuffers::Ticker::TickerEventTypeTable();
-			if (Bitwyre::Flatbuffers::Ticker::VerifyTickerEventBuffer(verifier))
-				return flatbuffers::FlatBufferToString(buf, type_table);
-			else
-				return "Invalid buffer received, PLEASE REPORT THIS to the provider";
-
+			return Bitwyre::Flatbuffers::Ticker::VerifyTickerEventBuffer(verifier) ? process_valid_buffer(nullptr)
+																				   : handle_invalid_buffer();
 		} else {
-			static_assert(always_false_v<FlatBufType>, "This type is unsupported!");
+			static_assert(always_false_v<flat_buf_type>, "This type is unsupported!");
 		}
 	}
-
-private:
 };
 
 } // namespace LibPhone

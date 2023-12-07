@@ -8,8 +8,8 @@
 #include "depthl2_generated.h"
 #include "l2_events_generated.h"
 #include "l3_events_generated.h"
-#include "trades_generated.h"
 #include "ticker_generated.h"
+#include "trades_generated.h"
 
 namespace LibPhone {
 
@@ -17,11 +17,12 @@ Phone::Phone(zenohc::Session& session)
 	: m_app(uWSAppWrapper({.passphrase = utils::ENVManager::get_instance().get_megaphone_uws_passphrase().c_str()})),
 	  m_supported_instruments(utils::ENVManager::get_instance().get_megaphone_supported_instruments()),
 	  m_serializer(),
+	  m_fbhandler(),
 	  m_zenoh_subscriber(nullptr) {
-		SPDLOG_INFO("Supported instruments:");
-		for (auto& instrument : this->m_supported_instruments) {
-			SPDLOG_INFO("\t{}", instrument);
-		}
+	SPDLOG_INFO("Supported instruments:");
+	for (auto& instrument : this->m_supported_instruments) {
+		SPDLOG_INFO("\t{}", instrument);
+	}
 
 	this->m_zenoh_subscriber = zenohc::expect<zenohc::Subscriber>(
 		session.declare_subscriber("bitwyre/megaphone/websockets", [&](const zenohc::Sample& sample) {
@@ -35,39 +36,36 @@ Phone::Phone(zenohc::Session& session)
 
 			std::transform(encoding.begin(), encoding.end(), encoding.begin(),
 						   [](unsigned char c) { return std::tolower(c); });
+
 			if (encoding == "ticker") {
-				auto data_flatbuf =
-					Bitwyre::Flatbuffers::Ticker::GetTickerEvent(datacopy.c_str());
+				auto data_flatbuf = Bitwyre::Flatbuffers::Ticker::GetTickerEvent(datacopy.c_str());
 				instrument = data_flatbuf->instrument()->str();
 				data = FBHandler::flatbuf_to_json<Bitwyre::Flatbuffers::Ticker::TickerEvent>(
 					sample.get_payload().start, sample.get_payload().get_len());
 
 			} else if (encoding == "l2_events") {
-				auto data_flatbuf =
-					Bitwyre::Flatbuffers::L2Event::GetL2Event(datacopy.c_str());
+				auto data_flatbuf = Bitwyre::Flatbuffers::L2Event::GetL2Event(datacopy.c_str());
 				instrument = data_flatbuf->symbol()->str();
 				data = FBHandler::flatbuf_to_json<Bitwyre::Flatbuffers::L2Event::L2Event>(
 					sample.get_payload().start, sample.get_payload().get_len());
 
 			} else if (encoding == "l3_events") {
-				auto data_flatbuf =
-					Bitwyre::Flatbuffers::L3Event::GetL3Event(datacopy.c_str());
+				auto data_flatbuf = Bitwyre::Flatbuffers::L3Event::GetL3Event(datacopy.c_str());
 				instrument = data_flatbuf->symbol()->str();
 				data = FBHandler::flatbuf_to_json<Bitwyre::Flatbuffers::L3Event::L3Event>(
 					sample.get_payload().start, sample.get_payload().get_len());
 
 			} else if (encoding == "trades") {
-				auto data_flatbuf =
-					Bitwyre::Flatbuffers::trades::Gettrades(datacopy.c_str());
+				auto data_flatbuf = Bitwyre::Flatbuffers::trades::Gettrades(datacopy.c_str());
 				instrument = data_flatbuf->symbol()->str();
-				data = FBHandler::flatbuf_to_json<Bitwyre::Flatbuffers::trades::trades>(
-					sample.get_payload().start, sample.get_payload().get_len());
+				data = FBHandler::flatbuf_to_json<Bitwyre::Flatbuffers::trades::trades>(sample.get_payload().start,
+																						sample.get_payload().get_len());
 
 			} else if (encoding == "depthl2" || encoding == "depthl2_10" || encoding == "depthl2_25" ||
 					   encoding == "depthl2_50" || encoding == "depthl2_100") {
-				auto data_flatbuf =
-					Bitwyre::Flatbuffers::Depthl2::GetDepthEvent(datacopy.c_str());
+				auto data_flatbuf = Bitwyre::Flatbuffers::Depthl2::GetDepthEvent(datacopy.c_str());
 				instrument = data_flatbuf->data()->instrument()->str();
+				// SPDLOG_INFO(data_flatbuf->data()->asks()[0][0]->price());
 				data = FBHandler::flatbuf_to_json<Bitwyre::Flatbuffers::Depthl2::DepthEvent>(
 					sample.get_payload().start, sample.get_payload().get_len());
 			}
@@ -76,7 +74,6 @@ Phone::Phone(zenohc::Session& session)
 
 			this->m_zenoh_queue.push(MEMessage {encoding, instrument, data});
 		}));
-
 
 	this->m_app.ws<PerSocketData>(
 		"/*",
@@ -110,7 +107,7 @@ Phone::Phone(zenohc::Session& session)
 				auto current_item = *this->m_zenoh_queue.front();
 				auto current_topic = current_item.msg_type + ':' + current_item.instrument;
 				if (this->m_app.publish(current_topic, current_item.data, uWS::OpCode::TEXT, false)) {
-					
+					SPDLOG_ERROR("Failed to publish to topic: ", current_topic);
 				}
 				this->m_zenoh_queue.pop();
 			}
