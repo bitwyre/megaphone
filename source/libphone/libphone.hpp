@@ -14,7 +14,6 @@
 #include "utils/utils.hpp"
 
 constexpr auto PORT = 7447;
-#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_DEBUG
 
 namespace LibPhone {
 
@@ -63,6 +62,7 @@ private:
 	std::atomic_int64_t users {0};
 
 	Serializer m_serializer;
+	FBHandler m_fbhandler;
 	zenohc::Subscriber m_zenoh_subscriber;
 	rigtorp::SPSCQueue<MEMessage> m_zenoh_queue {100'000};
 

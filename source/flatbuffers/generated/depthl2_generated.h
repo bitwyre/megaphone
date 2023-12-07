@@ -47,16 +47,18 @@ struct AskPrice FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
     VT_PRICE = 4,
     VT_QTY = 6
   };
-  double price() const {
-    return GetField<double>(VT_PRICE, 0.0);
+  const ::flatbuffers::String *price() const {
+    return GetPointer<const ::flatbuffers::String *>(VT_PRICE);
   }
-  double qty() const {
-    return GetField<double>(VT_QTY, 0.0);
+  const ::flatbuffers::String *qty() const {
+    return GetPointer<const ::flatbuffers::String *>(VT_QTY);
   }
   bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
-           VerifyField<double>(verifier, VT_PRICE, 8) &&
-           VerifyField<double>(verifier, VT_QTY, 8) &&
+           VerifyOffset(verifier, VT_PRICE) &&
+           verifier.VerifyString(price()) &&
+           VerifyOffset(verifier, VT_QTY) &&
+           verifier.VerifyString(qty()) &&
            verifier.EndTable();
   }
 };
@@ -65,11 +67,11 @@ struct AskPriceBuilder {
   typedef AskPrice Table;
   ::flatbuffers::FlatBufferBuilder &fbb_;
   ::flatbuffers::uoffset_t start_;
-  void add_price(double price) {
-    fbb_.AddElement<double>(AskPrice::VT_PRICE, price, 0.0);
+  void add_price(::flatbuffers::Offset<::flatbuffers::String> price) {
+    fbb_.AddOffset(AskPrice::VT_PRICE, price);
   }
-  void add_qty(double qty) {
-    fbb_.AddElement<double>(AskPrice::VT_QTY, qty, 0.0);
+  void add_qty(::flatbuffers::Offset<::flatbuffers::String> qty) {
+    fbb_.AddOffset(AskPrice::VT_QTY, qty);
   }
   explicit AskPriceBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
@@ -84,8 +86,8 @@ struct AskPriceBuilder {
 
 inline ::flatbuffers::Offset<AskPrice> CreateAskPrice(
     ::flatbuffers::FlatBufferBuilder &_fbb,
-    double price = 0.0,
-    double qty = 0.0) {
+    ::flatbuffers::Offset<::flatbuffers::String> price = 0,
+    ::flatbuffers::Offset<::flatbuffers::String> qty = 0) {
   AskPriceBuilder builder_(_fbb);
   builder_.add_qty(qty);
   builder_.add_price(price);
@@ -97,6 +99,18 @@ struct AskPrice::Traits {
   static auto constexpr Create = CreateAskPrice;
 };
 
+inline ::flatbuffers::Offset<AskPrice> CreateAskPriceDirect(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
+    const char *price = nullptr,
+    const char *qty = nullptr) {
+  auto price__ = price ? _fbb.CreateString(price) : 0;
+  auto qty__ = qty ? _fbb.CreateString(qty) : 0;
+  return Bitwyre::Flatbuffers::Depthl2::CreateAskPrice(
+      _fbb,
+      price__,
+      qty__);
+}
+
 struct BidPrice FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   typedef BidPriceBuilder Builder;
   struct Traits;
@@ -107,16 +121,18 @@ struct BidPrice FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
     VT_PRICE = 4,
     VT_QTY = 6
   };
-  double price() const {
-    return GetField<double>(VT_PRICE, 0.0);
+  const ::flatbuffers::String *price() const {
+    return GetPointer<const ::flatbuffers::String *>(VT_PRICE);
   }
-  double qty() const {
-    return GetField<double>(VT_QTY, 0.0);
+  const ::flatbuffers::String *qty() const {
+    return GetPointer<const ::flatbuffers::String *>(VT_QTY);
   }
   bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
-           VerifyField<double>(verifier, VT_PRICE, 8) &&
-           VerifyField<double>(verifier, VT_QTY, 8) &&
+           VerifyOffset(verifier, VT_PRICE) &&
+           verifier.VerifyString(price()) &&
+           VerifyOffset(verifier, VT_QTY) &&
+           verifier.VerifyString(qty()) &&
            verifier.EndTable();
   }
 };
@@ -125,11 +141,11 @@ struct BidPriceBuilder {
   typedef BidPrice Table;
   ::flatbuffers::FlatBufferBuilder &fbb_;
   ::flatbuffers::uoffset_t start_;
-  void add_price(double price) {
-    fbb_.AddElement<double>(BidPrice::VT_PRICE, price, 0.0);
+  void add_price(::flatbuffers::Offset<::flatbuffers::String> price) {
+    fbb_.AddOffset(BidPrice::VT_PRICE, price);
   }
-  void add_qty(double qty) {
-    fbb_.AddElement<double>(BidPrice::VT_QTY, qty, 0.0);
+  void add_qty(::flatbuffers::Offset<::flatbuffers::String> qty) {
+    fbb_.AddOffset(BidPrice::VT_QTY, qty);
   }
   explicit BidPriceBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
@@ -144,8 +160,8 @@ struct BidPriceBuilder {
 
 inline ::flatbuffers::Offset<BidPrice> CreateBidPrice(
     ::flatbuffers::FlatBufferBuilder &_fbb,
-    double price = 0.0,
-    double qty = 0.0) {
+    ::flatbuffers::Offset<::flatbuffers::String> price = 0,
+    ::flatbuffers::Offset<::flatbuffers::String> qty = 0) {
   BidPriceBuilder builder_(_fbb);
   builder_.add_qty(qty);
   builder_.add_price(price);
@@ -156,6 +172,18 @@ struct BidPrice::Traits {
   using type = BidPrice;
   static auto constexpr Create = CreateBidPrice;
 };
+
+inline ::flatbuffers::Offset<BidPrice> CreateBidPriceDirect(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
+    const char *price = nullptr,
+    const char *qty = nullptr) {
+  auto price__ = price ? _fbb.CreateString(price) : 0;
+  auto qty__ = qty ? _fbb.CreateString(qty) : 0;
+  return Bitwyre::Flatbuffers::Depthl2::CreateBidPrice(
+      _fbb,
+      price__,
+      qty__);
+}
 
 struct DepthData FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   typedef DepthDataBuilder Builder;
@@ -360,8 +388,8 @@ inline ::flatbuffers::Offset<DepthEvent> CreateDepthEventDirect(
 
 inline const ::flatbuffers::TypeTable *AskPriceTypeTable() {
   static const ::flatbuffers::TypeCode type_codes[] = {
-    { ::flatbuffers::ET_DOUBLE, 0, -1 },
-    { ::flatbuffers::ET_DOUBLE, 0, -1 }
+    { ::flatbuffers::ET_STRING, 0, -1 },
+    { ::flatbuffers::ET_STRING, 0, -1 }
   };
   static const char * const names[] = {
     "price",
@@ -375,8 +403,8 @@ inline const ::flatbuffers::TypeTable *AskPriceTypeTable() {
 
 inline const ::flatbuffers::TypeTable *BidPriceTypeTable() {
   static const ::flatbuffers::TypeCode type_codes[] = {
-    { ::flatbuffers::ET_DOUBLE, 0, -1 },
-    { ::flatbuffers::ET_DOUBLE, 0, -1 }
+    { ::flatbuffers::ET_STRING, 0, -1 },
+    { ::flatbuffers::ET_STRING, 0, -1 }
   };
   static const char * const names[] = {
     "price",

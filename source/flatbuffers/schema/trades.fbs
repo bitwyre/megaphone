@@ -1,6 +1,9 @@
 namespace Bitwyre.Flatbuffers.trades;
 
 table trades {
+    table: string;
+    action: string;
+
     price: string;
     qty: string;
     value: float64;

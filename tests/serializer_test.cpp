@@ -5,10 +5,13 @@
 #include "fbhandler/fbhandler.hpp"
 #include "serializer/serializer.hpp"
 
+#include <string>
+using namespace std::literals;
+
 using MegaphoneRequest = LibPhone::Serializer::MegaphoneRequest;
 
 TEST_CASE("The JSON request parser function is tested with correct data", "[JSON_REQ_PARSER_NOSANITIZE]") {
-	std::string_view req = R"({"op" : "subscribe", "args": ["trades:btc_usdt_spot", "depthl2:btc_usdt_spot"]})";
+	std::string_view req = R"({"op" : "subscribe", "args": ["trades:btd_usdt_spot", "depthl2:btd_usdt_spot"]})";
 
 	LibPhone::Serializer sz;
 	auto [req_success, res] = sz.parse_request(req);
@@ -47,12 +50,16 @@ TEST_CASE("Tests the FBH Class for FlatBuffer to JSON conversion", "[JSON_FBH]")
 	flatbuffers::FlatBufferBuilder builder;
 
 	std::vector<flatbuffers::Offset<Bitwyre::Flatbuffers::Depthl2::AskPrice>> asks_vector {
-		Bitwyre::Flatbuffers::Depthl2::CreateAskPrice(builder, 1.23, 10.0),
-		Bitwyre::Flatbuffers::Depthl2::CreateAskPrice(builder, 1.24, 15.0)};
+		Bitwyre::Flatbuffers::Depthl2::CreateAskPrice(builder, builder.CreateString("1.23"),
+													  builder.CreateString("10.0")),
+		Bitwyre::Flatbuffers::Depthl2::CreateAskPrice(builder, builder.CreateString("1.24"),
+													  builder.CreateString("15.0"))};
 
 	std::vector<flatbuffers::Offset<Bitwyre::Flatbuffers::Depthl2::BidPrice>> bids_vector {
-		Bitwyre::Flatbuffers::Depthl2::CreateBidPrice(builder, 1.21, 8.0),
-		Bitwyre::Flatbuffers::Depthl2::CreateBidPrice(builder, 1.20, 12.0)};
+		Bitwyre::Flatbuffers::Depthl2::CreateBidPrice(builder, builder.CreateString("1.21"),
+													  builder.CreateString("8.0")),
+		Bitwyre::Flatbuffers::Depthl2::CreateBidPrice(builder, builder.CreateString("1.20"),
+													  builder.CreateString("12.0"))};
 
 	auto depth_data = Bitwyre::Flatbuffers::Depthl2::CreateDepthData(
 		builder, builder.CreateString("usdt_jidr_spot"), 2913539096, false, builder.CreateVector(bids_vector),
@@ -66,5 +73,5 @@ TEST_CASE("Tests the FBH Class for FlatBuffer to JSON conversion", "[JSON_FBH]")
 	REQUIRE(
 		LibPhone::FBHandler::flatbuf_to_json<Bitwyre::Flatbuffers::Depthl2::DepthEvent>(builder.GetBufferPointer(),
 																						builder.GetSize()) ==
-		R"({ table: "depthL2", action: "snapshot", data: { instrument: "usdt_jidr_spot", sequence: 2913539096, bids: [ { price: 1.21, qty: 8.0 }, { price: 1.2, qty: 12.0 } ], asks: [ { price: 1.23, qty: 10.0 }, { price: 1.24, qty: 15.0 } ] } })");
+		R"({ "table": "depthL2", "action": "snapshot", "data": { "instrument": "usdt_jidr_spot", "sequence": 2913539096, "bids": [ { "price": 1.21, "qty": 8.0 }, { "price": 1.2, "qty": 12.0 } ], "asks": [ { "price": 1.23, "qty": 10.0 }, { "price": 1.24, "qty": 15.0 } ] } })");
 }

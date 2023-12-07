@@ -1,6 +1,9 @@
 namespace Bitwyre.Flatbuffers.Ticker;
 
 table TickerEvent {
+    table: string;
+    action: string;
+
     last_price: string;
     instrument: string;
     base_asset: string;

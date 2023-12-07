@@ -29,19 +29,27 @@ struct TickerEvent FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
     return TickerEventTypeTable();
   }
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
-    VT_LAST_PRICE = 4,
-    VT_INSTRUMENT = 6,
-    VT_BASE_ASSET = 8,
-    VT_QUOTE_ASSET = 10,
-    VT_HIGH_PRICE = 12,
-    VT_LOW_PRICE = 14,
-    VT_PCT_CHANGE = 16,
-    VT_VOL_QTY_BASE = 18,
-    VT_VOL_QTY_QUOTE = 20,
-    VT_BID_PRICE = 22,
-    VT_ASK_PRICE = 24,
-    VT_TIMESTAMP = 26
+    VT_TABLE = 4,
+    VT_ACTION = 6,
+    VT_LAST_PRICE = 8,
+    VT_INSTRUMENT = 10,
+    VT_BASE_ASSET = 12,
+    VT_QUOTE_ASSET = 14,
+    VT_HIGH_PRICE = 16,
+    VT_LOW_PRICE = 18,
+    VT_PCT_CHANGE = 20,
+    VT_VOL_QTY_BASE = 22,
+    VT_VOL_QTY_QUOTE = 24,
+    VT_BID_PRICE = 26,
+    VT_ASK_PRICE = 28,
+    VT_TIMESTAMP = 30
   };
+  const ::flatbuffers::String *table() const {
+    return GetPointer<const ::flatbuffers::String *>(VT_TABLE);
+  }
+  const ::flatbuffers::String *action() const {
+    return GetPointer<const ::flatbuffers::String *>(VT_ACTION);
+  }
   const ::flatbuffers::String *last_price() const {
     return GetPointer<const ::flatbuffers::String *>(VT_LAST_PRICE);
   }
@@ -80,6 +88,10 @@ struct TickerEvent FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   }
   bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
+           VerifyOffset(verifier, VT_TABLE) &&
+           verifier.VerifyString(table()) &&
+           VerifyOffset(verifier, VT_ACTION) &&
+           verifier.VerifyString(action()) &&
            VerifyOffset(verifier, VT_LAST_PRICE) &&
            verifier.VerifyString(last_price()) &&
            VerifyOffset(verifier, VT_INSTRUMENT) &&
@@ -111,6 +123,12 @@ struct TickerEventBuilder {
   typedef TickerEvent Table;
   ::flatbuffers::FlatBufferBuilder &fbb_;
   ::flatbuffers::uoffset_t start_;
+  void add_table(::flatbuffers::Offset<::flatbuffers::String> table) {
+    fbb_.AddOffset(TickerEvent::VT_TABLE, table);
+  }
+  void add_action(::flatbuffers::Offset<::flatbuffers::String> action) {
+    fbb_.AddOffset(TickerEvent::VT_ACTION, action);
+  }
   void add_last_price(::flatbuffers::Offset<::flatbuffers::String> last_price) {
     fbb_.AddOffset(TickerEvent::VT_LAST_PRICE, last_price);
   }
@@ -160,6 +178,8 @@ struct TickerEventBuilder {
 
 inline ::flatbuffers::Offset<TickerEvent> CreateTickerEvent(
     ::flatbuffers::FlatBufferBuilder &_fbb,
+    ::flatbuffers::Offset<::flatbuffers::String> table = 0,
+    ::flatbuffers::Offset<::flatbuffers::String> action = 0,
     ::flatbuffers::Offset<::flatbuffers::String> last_price = 0,
     ::flatbuffers::Offset<::flatbuffers::String> instrument = 0,
     ::flatbuffers::Offset<::flatbuffers::String> base_asset = 0,
@@ -185,6 +205,8 @@ inline ::flatbuffers::Offset<TickerEvent> CreateTickerEvent(
   builder_.add_base_asset(base_asset);
   builder_.add_instrument(instrument);
   builder_.add_last_price(last_price);
+  builder_.add_action(action);
+  builder_.add_table(table);
   return builder_.Finish();
 }
 
@@ -195,6 +217,8 @@ struct TickerEvent::Traits {
 
 inline ::flatbuffers::Offset<TickerEvent> CreateTickerEventDirect(
     ::flatbuffers::FlatBufferBuilder &_fbb,
+    const char *table = nullptr,
+    const char *action = nullptr,
     const char *last_price = nullptr,
     const char *instrument = nullptr,
     const char *base_asset = nullptr,
@@ -207,6 +231,8 @@ inline ::flatbuffers::Offset<TickerEvent> CreateTickerEventDirect(
     const char *bid_price = nullptr,
     const char *ask_price = nullptr,
     uint64_t timestamp = 0) {
+  auto table__ = table ? _fbb.CreateString(table) : 0;
+  auto action__ = action ? _fbb.CreateString(action) : 0;
   auto last_price__ = last_price ? _fbb.CreateString(last_price) : 0;
   auto instrument__ = instrument ? _fbb.CreateString(instrument) : 0;
   auto base_asset__ = base_asset ? _fbb.CreateString(base_asset) : 0;
@@ -220,6 +246,8 @@ inline ::flatbuffers::Offset<TickerEvent> CreateTickerEventDirect(
   auto ask_price__ = ask_price ? _fbb.CreateString(ask_price) : 0;
   return Bitwyre::Flatbuffers::Ticker::CreateTickerEvent(
       _fbb,
+      table__,
+      action__,
       last_price__,
       instrument__,
       base_asset__,
@@ -247,9 +275,13 @@ inline const ::flatbuffers::TypeTable *TickerEventTypeTable() {
     { ::flatbuffers::ET_STRING, 0, -1 },
     { ::flatbuffers::ET_STRING, 0, -1 },
     { ::flatbuffers::ET_STRING, 0, -1 },
+    { ::flatbuffers::ET_STRING, 0, -1 },
+    { ::flatbuffers::ET_STRING, 0, -1 },
     { ::flatbuffers::ET_ULONG, 0, -1 }
   };
   static const char * const names[] = {
+    "table",
+    "action",
     "last_price",
     "instrument",
     "base_asset",
@@ -264,7 +296,7 @@ inline const ::flatbuffers::TypeTable *TickerEventTypeTable() {
     "timestamp"
   };
   static const ::flatbuffers::TypeTable tt = {
-    ::flatbuffers::ST_TABLE, 12, type_codes, nullptr, nullptr, nullptr, names
+    ::flatbuffers::ST_TABLE, 14, type_codes, nullptr, nullptr, nullptr, names
   };
   return &tt;
 }
