@@ -43,6 +43,9 @@ Phone::Phone(zenohc::Session& session)
 				data = FBHandler::flatbuf_to_json<Bitwyre::Flatbuffers::Ticker::TickerEvent>(
 					sample.get_payload().start, sample.get_payload().get_len());
 
+				// Push all the ticker events for every in the ticker queue.
+				this->m_zenoh_queue.push(MEMessage {encoding, "", data});
+
 			} else if (encoding == "l2_events") {
 				auto data_flatbuf = Bitwyre::Flatbuffers::L2Event::GetL2Event(datacopy.c_str());
 				instrument = data_flatbuf->symbol()->str();
@@ -105,9 +108,11 @@ Phone::Phone(zenohc::Session& session)
 		p_loop->defer([this]() {
 			if (this->m_zenoh_queue.front() != nullptr) {
 				auto current_item = *this->m_zenoh_queue.front();
-				auto current_topic = current_item.msg_type + ':' + current_item.instrument;
+				auto current_topic = current_item.msg_type == "ticker"
+										 ? current_item.msg_type
+										 : (current_item.msg_type + ':' + current_item.instrument);
 				if (this->m_app.publish(current_topic, current_item.data, uWS::OpCode::TEXT, false)) {
-					SPDLOG_ERROR("Failed to publish to topic: ", current_topic);
+					// SPDLOG_ERROR("Failed to publish to topic: ", current_topic);
 				}
 				this->m_zenoh_queue.pop();
 			}
