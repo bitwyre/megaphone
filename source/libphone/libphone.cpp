@@ -44,7 +44,9 @@ Phone::Phone(zenohc::Session& session)
 					sample.get_payload().start, sample.get_payload().get_len());
 
 				// Push all the ticker events for every in the ticker queue.
-				this->m_zenoh_queue.push(MEMessage {encoding, "", data});
+				// Needs to be const to avoid a move.
+				const auto ticker_message = MEMessage {encoding, "", data};
+				this->m_zenoh_queue.push(ticker_message);
 
 			} else if (encoding == "l2_events") {
 				auto data_flatbuf = Bitwyre::Flatbuffers::L2Event::GetL2Event(datacopy.c_str());
