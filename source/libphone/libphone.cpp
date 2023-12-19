@@ -26,9 +26,6 @@ Phone::Phone(zenohc::Session& session)
 
 	this->m_zenoh_subscriber = zenohc::expect<zenohc::Subscriber>(
 		session.declare_subscriber("bitwyre/megaphone/websockets", [&](const zenohc::Sample& sample) {
-			// Timer so that Zenoh doesn't overload the shit out of megaphone
-			std::this_thread::sleep_for(std::chrono::milliseconds(1));
-
 			std::string encoding {sample.get_encoding().get_suffix().as_string_view()};
 			std::string datacopy {sample.get_payload().as_string_view()};
 			std::string data {};
@@ -38,29 +35,28 @@ Phone::Phone(zenohc::Session& session)
 						   [](unsigned char c) { return std::tolower(c); });
 
 			if (encoding == "ticker") {
+
 				auto data_flatbuf = Bitwyre::Flatbuffers::Ticker::GetTickerEvent(datacopy.c_str());
 				instrument = data_flatbuf->instrument()->str();
 				data = FBHandler::flatbuf_to_json<Bitwyre::Flatbuffers::Ticker::TickerEvent>(
 					sample.get_payload().start, sample.get_payload().get_len());
 
-				// Push all the ticker events for every in the ticker queue.
-				// Needs to be const to avoid a move.
-				const auto ticker_message = MEMessage {encoding, "", data};
-				this->m_zenoh_queue.push(ticker_message);
-
 			} else if (encoding == "l2_events") {
+
 				auto data_flatbuf = Bitwyre::Flatbuffers::L2Event::GetL2Event(datacopy.c_str());
 				instrument = data_flatbuf->symbol()->str();
 				data = FBHandler::flatbuf_to_json<Bitwyre::Flatbuffers::L2Event::L2Event>(
 					sample.get_payload().start, sample.get_payload().get_len());
 
 			} else if (encoding == "l3_events") {
+
 				auto data_flatbuf = Bitwyre::Flatbuffers::L3Event::GetL3Event(datacopy.c_str());
 				instrument = data_flatbuf->symbol()->str();
 				data = FBHandler::flatbuf_to_json<Bitwyre::Flatbuffers::L3Event::L3Event>(
 					sample.get_payload().start, sample.get_payload().get_len());
 
 			} else if (encoding == "trades") {
+
 				auto data_flatbuf = Bitwyre::Flatbuffers::trades::Gettrades(datacopy.c_str());
 				instrument = data_flatbuf->symbol()->str();
 				data = FBHandler::flatbuf_to_json<Bitwyre::Flatbuffers::trades::trades>(sample.get_payload().start,
@@ -68,14 +64,14 @@ Phone::Phone(zenohc::Session& session)
 
 			} else if (encoding == "depthl2" || encoding == "depthl2_10" || encoding == "depthl2_25" ||
 					   encoding == "depthl2_50" || encoding == "depthl2_100") {
+
 				auto data_flatbuf = Bitwyre::Flatbuffers::Depthl2::GetDepthEvent(datacopy.c_str());
 				instrument = data_flatbuf->data()->instrument()->str();
-				// SPDLOG_INFO(data_flatbuf->data()->asks()[0][0]->price());
 				data = FBHandler::flatbuf_to_json<Bitwyre::Flatbuffers::Depthl2::DepthEvent>(
 					sample.get_payload().start, sample.get_payload().get_len());
 			}
 
-			SPDLOG_INFO("Event type: {}\n\tData: {}\n\tInstrument: {}", encoding, data, instrument);
+			SPDLOG_INFO("Event type: {}\n\tInstrument: {}\n\tData: {}", encoding, instrument, data);
 
 			this->m_zenoh_queue.push(MEMessage {encoding, instrument, data});
 		}));
@@ -109,13 +105,8 @@ Phone::Phone(zenohc::Session& session)
 	loop->addPostHandler(nullptr, [this](uWS::Loop* p_loop) {
 		p_loop->defer([this]() {
 			if (this->m_zenoh_queue.front() != nullptr) {
-				auto current_item = *this->m_zenoh_queue.front();
-				auto current_topic = current_item.msg_type == "ticker"
-										 ? current_item.msg_type
-										 : (current_item.msg_type + ':' + current_item.instrument);
-				if (this->m_app.publish(current_topic, current_item.data, uWS::OpCode::TEXT, false)) {
-					// SPDLOG_ERROR("Failed to publish to topic: ", current_topic);
-				}
+
+				publish_result(std::move(*this->m_zenoh_queue.front()));
 				this->m_zenoh_queue.pop();
 			}
 		});
@@ -131,6 +122,25 @@ Phone::Phone(zenohc::Session& session)
 Phone::~Phone() { }
 
 auto Phone::run() -> void { this->m_app.run(); }
+
+auto Phone::publish_result(LibPhone::MEMessage&& item) noexcept -> void {
+	auto topic = item.msg_type + ':' + item.instrument;
+
+	// Publish to the global ticker
+	if (item.msg_type == "ticker") {
+		if (!this->m_app.publish(item.msg_type, item.data, uWS::OpCode::TEXT, false)) {
+			// This log is debug as publish fails if the topic doesn't exist for the user
+			// that results in a lot of false-positive error logs.
+			SPDLOG_DEBUG("Failed to publish to topic: {}", topic);
+		}
+	}
+
+	// as well as the global ticker
+	// TODO: Make a separate thread for each type of event
+	if (!this->m_app.publish(topic, item.data, uWS::OpCode::TEXT, false)) {
+		SPDLOG_DEBUG("Failed to publish to topic: {}", topic);
+	}
+};
 
 auto Phone::on_ws_open(uWSWebSocket* ws) noexcept -> void {
 	/* Open event here, you may access ws->getUserData() which points to a
