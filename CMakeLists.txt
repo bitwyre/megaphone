@@ -3,7 +3,7 @@ project("Megaphone")
 
 # Project options
 option(USE_CLANG_TIDY OFF "An option to turn off clang-tidy")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -fPIC")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 
 # Set project options
 set(CMAKE_CXX_STANDARD 20)
@@ -15,6 +15,8 @@ option(MEGAPHONE_ENABLE_TESTS OFF "Enable Catch2 tests")
 option(MEGAPHONE_ENABLE_ASAN OFF "Enable libasan")
 
 include(cmake/FetchPackages.cmake)
+
+add_library(shared INTERFACE)
 
 file(GLOB_RECURSE LIBPHONE_SOURCES
     source/libphone/*.cpp
@@ -53,11 +55,16 @@ target_compile_options(phone PUBLIC ${COMPILER_FLAGS})
 target_link_options(phone PUBLIC ${COMPILER_FLAGS})
 
 # Add include dirs
-target_include_directories(megaphone PUBLIC source/megaphone source/flatbuffers/generated source/spscqueue)
-target_include_directories(phone PUBLIC source/libphone source/flatbuffers/generated source/spscqueue)
+target_include_directories(shared 
+    INTERFACE source/flatbuffers/generated
+    INTERFACE source/spscqueue
+)
+target_include_directories(megaphone PUBLIC source/megaphone)
+target_include_directories(phone PUBLIC source/libphone)
 
 # Link all the libs to each other
 target_link_libraries(phone
+    PUBLIC shared
     PUBLIC uWebSockets
     PUBLIC spdlog::spdlog
     PUBLIC rapidjson

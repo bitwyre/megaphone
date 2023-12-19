@@ -66,8 +66,13 @@ private:
 	zenohc::Subscriber m_zenoh_subscriber;
 	rigtorp::SPSCQueue<MEMessage> m_zenoh_queue {100'000};
 
-private: // Private block for WS functions
-	auto zenoh_callback(const zenohc::Sample& sample) -> void;
+private: // Private block functions
+	/**
+	 * @brief Thin wrapper around publish with common args
+	 * @param topic The topic to publish to
+	 * @param data The data to be published
+	 */
+	auto publish_result(LibPhone::MEMessage&& item) noexcept -> void;
 
 	/**
 	 * @brief Called when a WebSocket connection is opened.
