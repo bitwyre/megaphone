@@ -13,17 +13,54 @@
 
 namespace LibPhone {
 
-Phone::Phone(zenohc::Session& session)
+Phone::Phone()
 	: m_app(uWSAppWrapper({.passphrase = utils::ENVManager::get_instance().get_megaphone_uws_passphrase().c_str()})),
 	  m_supported_instruments(utils::ENVManager::get_instance().get_megaphone_supported_instruments()),
 	  m_serializer(),
 	  m_fbhandler(),
 	  m_zenoh_subscriber(nullptr) {
+
 	SPDLOG_INFO("Supported instruments:");
 	for (auto& instrument : this->m_supported_instruments) {
 		SPDLOG_INFO("\t{}", instrument);
 	}
 
+	this->m_app.ws<PerSocketData>(
+		"/*",
+		{.compression = uWS::DISABLED,
+		 .maxPayloadLength = 16 * 1024 * 1024,
+		 .idleTimeout = 960,
+		 .maxBackpressure = 1 * 1024 * 1024,
+		 .closeOnBackpressureLimit = false,
+		 .resetIdleTimeoutOnSend = false,
+		 .sendPingsAutomatically = false,
+		 /* Handlers */
+		 .upgrade = nullptr,
+		 .open = [this](auto* ws) { this->on_ws_open(ws); },
+		 .message = [this](auto* ws, std::string_view message,
+						   uWS::OpCode opCode) { this->on_ws_message(ws, message, opCode); },
+		 .drain = [this](auto* ws) { this->on_ws_drain(ws); },
+		 .ping = [this](auto* ws, std::string_view message) { this->on_ws_ping(ws, message); },
+		 .pong = [this](auto* ws, std::string_view message) { this->on_ws_pong(ws, message); },
+		 .close = [this](auto* ws, int code, std::string_view message) { this->on_ws_close(ws, code, message); }});
+
+	auto* loop = uWS::Loop::get();
+
+	auto* loop_t = reinterpret_cast<struct us_loop_t*>(loop);
+	auto* delay_timer = us_create_timer(loop_t, 0, 0);
+	us_timer_set(
+		delay_timer, [](struct us_timer_t*) {}, 1, 1);
+
+	this->m_app.listen(PORT, [](auto* listen_socket) {
+		if (listen_socket) {
+			SPDLOG_INFO("Listening on port {}", PORT);
+		}
+	});
+};
+
+Phone::~Phone() { }
+
+auto Phone::run(zenohc::Session& session) -> void {
 	this->m_zenoh_subscriber = zenohc::expect<zenohc::Subscriber>(
 		session.declare_subscriber("bitwyre/megaphone/websockets", [&](const zenohc::Sample& sample) {
 			std::string encoding {sample.get_encoding().get_suffix().as_string_view()};
@@ -73,55 +110,11 @@ Phone::Phone(zenohc::Session& session)
 
 			SPDLOG_INFO("Event type: {}\n\tInstrument: {}\n\tData: {}", encoding, instrument, data);
 
-			this->m_zenoh_queue.push(MEMessage {encoding, instrument, data});
+			publish_result(MEMessage {encoding, instrument, data});
 		}));
 
-	this->m_app.ws<PerSocketData>(
-		"/*",
-		{.compression = uWS::DISABLED,
-		 .maxPayloadLength = 16 * 1024 * 1024,
-		 .idleTimeout = 960,
-		 .maxBackpressure = 1 * 1024 * 1024,
-		 .closeOnBackpressureLimit = false,
-		 .resetIdleTimeoutOnSend = false,
-		 .sendPingsAutomatically = false,
-		 /* Handlers */
-		 .upgrade = nullptr,
-		 .open = [this](auto* ws) { this->on_ws_open(ws); },
-		 .message = [this](auto* ws, std::string_view message,
-						   uWS::OpCode opCode) { this->on_ws_message(ws, message, opCode); },
-		 .drain = [this](auto* ws) { this->on_ws_drain(ws); },
-		 .ping = [this](auto* ws, std::string_view message) { this->on_ws_ping(ws, message); },
-		 .pong = [this](auto* ws, std::string_view message) { this->on_ws_pong(ws, message); },
-		 .close = [this](auto* ws, int code, std::string_view message) { this->on_ws_close(ws, code, message); }});
-
-	auto* loop = uWS::Loop::get();
-
-	auto* loop_t = reinterpret_cast<struct us_loop_t*>(loop);
-	auto* delay_timer = us_create_timer(loop_t, 0, 0);
-	us_timer_set(
-		delay_timer, [](struct us_timer_t*) {}, 1, 1);
-
-	loop->addPostHandler(nullptr, [this](uWS::Loop* p_loop) {
-		p_loop->defer([this]() {
-			if (this->m_zenoh_queue.front() != nullptr) {
-
-				publish_result(std::move(*this->m_zenoh_queue.front()));
-				this->m_zenoh_queue.pop();
-			}
-		});
-	});
-
-	this->m_app.listen(PORT, [](auto* listen_socket) {
-		if (listen_socket) {
-			SPDLOG_INFO("Listening on port {}", PORT);
-		}
-	});
-};
-
-Phone::~Phone() { }
-
-auto Phone::run() -> void { this->m_app.run(); }
+	this->m_app.run();
+}
 
 auto Phone::publish_result(LibPhone::MEMessage&& item) noexcept -> void {
 	auto topic = item.msg_type + ':' + item.instrument;

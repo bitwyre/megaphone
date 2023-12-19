@@ -8,7 +8,6 @@
 #include <atomic>
 #include <iostream>
 
-#include "SPSCQueue.h"
 #include "fbhandler/fbhandler.hpp"
 #include "serializer/serializer.hpp"
 #include "utils/utils.hpp"
@@ -26,7 +25,7 @@ struct MEMessage {
 
 class Phone {
 public:
-	explicit Phone(zenohc::Session& session);
+	explicit Phone();
 	~Phone();
 
 	Phone(const Phone&) = delete;
@@ -35,7 +34,7 @@ public:
 	Phone operator=(const Phone&) = delete;
 	Phone operator=(Phone&&) noexcept = delete;
 
-	auto run() -> void;
+	auto run(zenohc::Session& session) -> void;
 
 private:
 	/* ws->getUserData returns one of these */
@@ -64,7 +63,6 @@ private:
 	Serializer m_serializer;
 	FBHandler m_fbhandler;
 	zenohc::Subscriber m_zenoh_subscriber;
-	rigtorp::SPSCQueue<MEMessage> m_zenoh_queue {100'000};
 
 private: // Private block functions
 	/**

@@ -57,7 +57,6 @@ target_link_options(phone PUBLIC ${COMPILER_FLAGS})
 # Add include dirs
 target_include_directories(shared 
     INTERFACE source/flatbuffers/generated
-    INTERFACE source/spscqueue
 )
 target_include_directories(megaphone PUBLIC source/megaphone)
 target_include_directories(phone PUBLIC source/libphone)
