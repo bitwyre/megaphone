@@ -19,8 +19,8 @@ auto main(int argc, char** argv) -> int {
 	// // Wait for a key press to exit
 	// auto c = getchar();
 
-	LibPhone::Phone phone {session};
-	phone.run();
+	LibPhone::Phone phone {};
+	phone.run(session);
 
 	return 0;
 }

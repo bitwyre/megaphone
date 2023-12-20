@@ -7,8 +7,8 @@
 
 #include <atomic>
 #include <iostream>
+#include <mutex>
 
-#include "SPSCQueue.h"
 #include "fbhandler/fbhandler.hpp"
 #include "serializer/serializer.hpp"
 #include "utils/utils.hpp"
@@ -26,22 +26,21 @@ struct MEMessage {
 
 class Phone {
 public:
-	explicit Phone(zenohc::Session& session);
+	explicit Phone();
 	~Phone();
 
 	Phone(const Phone&) = delete;
-	Phone(Phone&&) noexcept = delete;
+	Phone(Phone&&) = delete;
 
 	Phone operator=(const Phone&) = delete;
-	Phone operator=(Phone&&) noexcept = delete;
+	Phone operator=(Phone&&) = delete;
 
-	auto run() -> void;
+	auto run(zenohc::Session& session) -> void;
 
 private:
 	/* ws->getUserData returns one of these */
 	struct PerSocketData {
 		/* Fill with user data */
-		std::vector<std::string> topics {};
 		int user {0};
 	};
 
@@ -62,9 +61,9 @@ private:
 	std::atomic_int64_t users {0};
 
 	Serializer m_serializer;
-	FBHandler m_fbhandler;
 	zenohc::Subscriber m_zenoh_subscriber;
-	rigtorp::SPSCQueue<MEMessage> m_zenoh_queue {100'000};
+
+	uWS::Loop * m_loop;
 
 private: // Private block functions
 	/**
@@ -72,14 +71,14 @@ private: // Private block functions
 	 * @param topic The topic to publish to
 	 * @param data The data to be published
 	 */
-	auto publish_result(LibPhone::MEMessage&& item) noexcept -> void;
+	auto publish_result(MEMessage&& item) -> void;
 
 	/**
 	 * @brief Called when a WebSocket connection is opened.
 	 *
 	 * @param ws Pointer to the WebSocket instance.
 	 */
-	inline auto on_ws_open(uWSWebSocket* ws) noexcept -> void;
+	inline auto on_ws_open(uWSWebSocket* ws) -> void;
 
 	/**
 	 * @brief Called when a WebSocket receives a message.
@@ -88,14 +87,14 @@ private: // Private block functions
 	 * @param message The received message as a string view.
 	 * @param opCode The WebSocket message opcode.
 	 */
-	inline auto on_ws_message(uWSWebSocket* ws, std::string_view message, uWS::OpCode opCode) noexcept -> void;
+	inline auto on_ws_message(uWSWebSocket* ws, std::string_view message, uWS::OpCode opCode) -> void;
 
 	/**
 	 * @brief Called when the WebSocket is ready to accept more data.
 	 *
 	 * @param ws Pointer to the WebSocket instance.
 	 */
-	inline auto on_ws_drain(uWSWebSocket* ws) noexcept -> void;
+	inline auto on_ws_drain(uWSWebSocket* ws) -> void;
 
 	/**
 	 * @brief Called when a WebSocket receives a ping message.
@@ -103,7 +102,7 @@ private: // Private block functions
 	 * @param ws Pointer to the WebSocket instance.
 	 * @param message The received ping message as a string view.
 	 */
-	inline auto on_ws_ping(uWSWebSocket* ws, std::string_view message) noexcept -> void;
+	inline auto on_ws_ping(uWSWebSocket* ws, std::string_view message) -> void;
 
 	/**
 	 * @brief Called when a WebSocket receives a pong message.
@@ -111,7 +110,7 @@ private: // Private block functions
 	 * @param ws Pointer to the WebSocket instance.
 	 * @param message The received pong message as a string view.
 	 */
-	inline auto on_ws_pong(uWSWebSocket* ws, std::string_view message) noexcept -> void;
+	inline auto on_ws_pong(uWSWebSocket* ws, std::string_view message) -> void;
 
 	/**
 	 * @brief Called when a WebSocket connection is closed.
@@ -120,7 +119,7 @@ private: // Private block functions
 	 * @param code The WebSocket close code.
 	 * @param message The close message as a string view.
 	 */
-	inline auto on_ws_close(uWSWebSocket* ws, int code, std::string_view message) noexcept -> void;
+	inline auto on_ws_close(uWSWebSocket* ws, int code, std::string_view message) -> void;
 };
 
 } // namespace LibPhone
