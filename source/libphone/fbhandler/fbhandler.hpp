@@ -41,7 +41,8 @@ public:
 		auto handle_invalid_buffer = [&]() { return "Invalid buffer received, PLEASE REPORT THIS to the provider"; };
 
 		auto process_valid_buffer = [&](auto&& data_flatbuf) {
-			return flatbuffers::FlatBufferToString(buf, type_table);
+			IterateFlatBuffer(buf, type_table, &flatbuf_visitor);
+			return flatbuf_visitor.s;
 		};
 
 		if constexpr (std::is_same_v<flat_buf_type, Bitwyre::Flatbuffers::Depthl2::DepthEvent>) {
