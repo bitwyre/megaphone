@@ -17,7 +17,6 @@ Phone::Phone()
 	: m_app(uWSAppWrapper({.passphrase = utils::ENVManager::get_instance().get_megaphone_uws_passphrase().c_str()})),
 	  m_supported_instruments(utils::ENVManager::get_instance().get_megaphone_supported_instruments()),
 	  m_serializer(),
-	  m_fbhandler(),
 	  m_zenoh_subscriber(nullptr) {
 
 	SPDLOG_INFO("Supported instruments:");
@@ -28,9 +27,9 @@ Phone::Phone()
 	this->m_app.ws<PerSocketData>(
 		"/*",
 		{.compression = uWS::DISABLED,
-		 .maxPayloadLength = 16 * 1024 * 1024,
+		 .maxPayloadLength = 16 * 2048 * 2048,
 		 .idleTimeout = 960,
-		 .maxBackpressure = 1 * 1024 * 1024,
+		 .maxBackpressure = 16 * 2048 * 2048,
 		 .closeOnBackpressureLimit = false,
 		 .resetIdleTimeoutOnSend = false,
 		 .sendPingsAutomatically = false,
@@ -39,14 +38,14 @@ Phone::Phone()
 		 .open = [this](auto* ws) { this->on_ws_open(ws); },
 		 .message = [this](auto* ws, std::string_view message,
 						   uWS::OpCode opCode) { this->on_ws_message(ws, message, opCode); },
-		 .drain = [this](auto* ws) { this->on_ws_drain(ws); },
+		 .drain = nullptr,
 		 .ping = [this](auto* ws, std::string_view message) { this->on_ws_ping(ws, message); },
 		 .pong = [this](auto* ws, std::string_view message) { this->on_ws_pong(ws, message); },
 		 .close = [this](auto* ws, int code, std::string_view message) { this->on_ws_close(ws, code, message); }});
 
-	auto* loop = uWS::Loop::get();
+	this->m_loop = uWS::Loop::get();
 
-	auto* loop_t = reinterpret_cast<struct us_loop_t*>(loop);
+	auto* loop_t = reinterpret_cast<struct us_loop_t*>(this->m_loop);
 	auto* delay_timer = us_create_timer(loop_t, 0, 0);
 	us_timer_set(
 		delay_timer, [](struct us_timer_t*) {}, 1, 1);
@@ -61,12 +60,13 @@ Phone::Phone()
 Phone::~Phone() { }
 
 auto Phone::run(zenohc::Session& session) -> void {
+
 	this->m_zenoh_subscriber = zenohc::expect<zenohc::Subscriber>(
 		session.declare_subscriber("bitwyre/megaphone/websockets", [&](const zenohc::Sample& sample) {
-			std::string encoding {sample.get_encoding().get_suffix().as_string_view()};
-			std::string datacopy {sample.get_payload().as_string_view()};
 			std::string data {};
 			std::string instrument {};
+			std::string encoding {sample.get_encoding().get_suffix().as_string_view()};
+			std::string datacopy {reinterpret_cast<const char*>(sample.get_payload().start), sample.get_payload().len};
 
 			std::transform(encoding.begin(), encoding.end(), encoding.begin(),
 						   [](unsigned char c) { return std::tolower(c); });
@@ -116,26 +116,33 @@ auto Phone::run(zenohc::Session& session) -> void {
 	this->m_app.run();
 }
 
-auto Phone::publish_result(LibPhone::MEMessage&& item) noexcept -> void {
-	auto topic = item.msg_type + ':' + item.instrument;
+auto Phone::publish_result(MEMessage&& item) -> void {
 
-	// Publish to the global ticker
-	if (item.msg_type == "ticker") {
-		if (!this->m_app.publish(item.msg_type, item.data, uWS::OpCode::TEXT, false)) {
-			// This log is debug as publish fails if the topic doesn't exist for the user
-			// that results in a lot of false-positive error logs.
+	this->m_loop->defer([=]() {
+		// This needs to be done as the publish function takes in a string view, ie, a reference.
+		const auto data_copy {item.data};
+		const auto topic = item.msg_type + ':' + item.instrument;
+
+		// Publish to the global ticker
+		if (item.msg_type == "ticker") {
+			if (!this->m_app.publish(item.msg_type, data_copy, uWS::OpCode::TEXT, false)) {
+				// This log is debug as publish fails if the topic doesn't exist for the user
+				// that results in a lot of false-positive error logs.
+				SPDLOG_DEBUG("Failed to publish to topic: {}", topic);
+			}
+		}
+
+		// as well as the global ticker
+		// TODO: Make a separate thread for each type of event
+		if (!this->m_app.publish(topic, item.data, uWS::OpCode::TEXT, false)) {
 			SPDLOG_DEBUG("Failed to publish to topic: {}", topic);
 		}
-	}
+	});
 
-	// as well as the global ticker
-	// TODO: Make a separate thread for each type of event
-	if (!this->m_app.publish(topic, item.data, uWS::OpCode::TEXT, false)) {
-		SPDLOG_DEBUG("Failed to publish to topic: {}", topic);
-	}
+	return;
 };
 
-auto Phone::on_ws_open(uWSWebSocket* ws) noexcept -> void {
+auto Phone::on_ws_open(uWSWebSocket* ws) -> void {
 	/* Open event here, you may access ws->getUserData() which points to a
 	 * PerSocketData struct */
 	PerSocketData* perSocketData = (PerSocketData*)ws->getUserData();
@@ -148,17 +155,15 @@ auto Phone::on_ws_open(uWSWebSocket* ws) noexcept -> void {
 			 "subscribe to a channel.");
 }
 
-auto Phone::on_ws_message(uWSWebSocket* ws, std::string_view message, uWS::OpCode opCode) noexcept -> void {
+auto Phone::on_ws_message(uWSWebSocket* ws, std::string_view message, uWS::OpCode opCode) -> void {
 	PerSocketData* perSocketData = (PerSocketData*)ws->getUserData();
 
 	const auto& [success, req] = this->m_serializer.parse_request(message);
 
 	if (success) {
 
-		perSocketData->topics = std::move(req.topics);
-
 		SPDLOG_INFO("user {} has subscribed to topics: ", perSocketData->user);
-		for (auto& topic : perSocketData->topics) {
+		for (auto& topic : req.topics) {
 			if (ws->subscribe(topic)) {
 				SPDLOG_INFO("\t - {}", topic);
 			} else {
@@ -172,12 +177,12 @@ auto Phone::on_ws_message(uWSWebSocket* ws, std::string_view message, uWS::OpCod
 	}
 }
 
-auto Phone::on_ws_drain(uWSWebSocket* ws) noexcept -> void { }
+auto Phone::on_ws_drain(uWSWebSocket* ws) -> void { }
 
-auto Phone::on_ws_ping(uWSWebSocket* ws, std::string_view message) noexcept -> void { }
+auto Phone::on_ws_ping(uWSWebSocket* ws, std::string_view message) -> void { }
 
-auto Phone::on_ws_pong(uWSWebSocket* ws, std::string_view message) noexcept -> void { }
+auto Phone::on_ws_pong(uWSWebSocket* ws, std::string_view message) -> void { }
 
-auto Phone::on_ws_close(uWSWebSocket* ws, int code, std::string_view message) noexcept -> void { }
+auto Phone::on_ws_close(uWSWebSocket* ws, int code, std::string_view message) -> void { }
 
 } // namespace LibPhone
