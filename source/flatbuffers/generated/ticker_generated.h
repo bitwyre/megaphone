@@ -32,17 +32,19 @@ struct TickerEvent FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
     VT_TABLE = 4,
     VT_ACTION = 6,
     VT_LAST_PRICE = 8,
-    VT_INSTRUMENT = 10,
-    VT_BASE_ASSET = 12,
-    VT_QUOTE_ASSET = 14,
-    VT_HIGH_PRICE = 16,
-    VT_LOW_PRICE = 18,
-    VT_PCT_CHANGE = 20,
-    VT_VOL_QTY_BASE = 22,
-    VT_VOL_QTY_QUOTE = 24,
-    VT_BID_PRICE = 26,
-    VT_ASK_PRICE = 28,
-    VT_TIMESTAMP = 30
+    VT_LAST_SIZE = 10,
+    VT_OPEN24H = 12,
+    VT_INSTRUMENT = 14,
+    VT_BASE_ASSET = 16,
+    VT_QUOTE_ASSET = 18,
+    VT_HIGH_PRICE = 20,
+    VT_LOW_PRICE = 22,
+    VT_PCT_CHANGE = 24,
+    VT_VOL_QTY_BASE = 26,
+    VT_VOL_QTY_QUOTE = 28,
+    VT_BID_PRICE = 30,
+    VT_ASK_PRICE = 32,
+    VT_TIMESTAMP = 34
   };
   const ::flatbuffers::String *table() const {
     return GetPointer<const ::flatbuffers::String *>(VT_TABLE);
@@ -52,6 +54,12 @@ struct TickerEvent FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   }
   const ::flatbuffers::String *last_price() const {
     return GetPointer<const ::flatbuffers::String *>(VT_LAST_PRICE);
+  }
+  const ::flatbuffers::String *last_size() const {
+    return GetPointer<const ::flatbuffers::String *>(VT_LAST_SIZE);
+  }
+  const ::flatbuffers::String *open24h() const {
+    return GetPointer<const ::flatbuffers::String *>(VT_OPEN24H);
   }
   const ::flatbuffers::String *instrument() const {
     return GetPointer<const ::flatbuffers::String *>(VT_INSTRUMENT);
@@ -94,6 +102,10 @@ struct TickerEvent FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
            verifier.VerifyString(action()) &&
            VerifyOffset(verifier, VT_LAST_PRICE) &&
            verifier.VerifyString(last_price()) &&
+           VerifyOffset(verifier, VT_LAST_SIZE) &&
+           verifier.VerifyString(last_size()) &&
+           VerifyOffset(verifier, VT_OPEN24H) &&
+           verifier.VerifyString(open24h()) &&
            VerifyOffset(verifier, VT_INSTRUMENT) &&
            verifier.VerifyString(instrument()) &&
            VerifyOffset(verifier, VT_BASE_ASSET) &&
@@ -131,6 +143,12 @@ struct TickerEventBuilder {
   }
   void add_last_price(::flatbuffers::Offset<::flatbuffers::String> last_price) {
     fbb_.AddOffset(TickerEvent::VT_LAST_PRICE, last_price);
+  }
+  void add_last_size(::flatbuffers::Offset<::flatbuffers::String> last_size) {
+    fbb_.AddOffset(TickerEvent::VT_LAST_SIZE, last_size);
+  }
+  void add_open24h(::flatbuffers::Offset<::flatbuffers::String> open24h) {
+    fbb_.AddOffset(TickerEvent::VT_OPEN24H, open24h);
   }
   void add_instrument(::flatbuffers::Offset<::flatbuffers::String> instrument) {
     fbb_.AddOffset(TickerEvent::VT_INSTRUMENT, instrument);
@@ -181,6 +199,8 @@ inline ::flatbuffers::Offset<TickerEvent> CreateTickerEvent(
     ::flatbuffers::Offset<::flatbuffers::String> table = 0,
     ::flatbuffers::Offset<::flatbuffers::String> action = 0,
     ::flatbuffers::Offset<::flatbuffers::String> last_price = 0,
+    ::flatbuffers::Offset<::flatbuffers::String> last_size = 0,
+    ::flatbuffers::Offset<::flatbuffers::String> open24h = 0,
     ::flatbuffers::Offset<::flatbuffers::String> instrument = 0,
     ::flatbuffers::Offset<::flatbuffers::String> base_asset = 0,
     ::flatbuffers::Offset<::flatbuffers::String> quote_asset = 0,
@@ -204,6 +224,8 @@ inline ::flatbuffers::Offset<TickerEvent> CreateTickerEvent(
   builder_.add_quote_asset(quote_asset);
   builder_.add_base_asset(base_asset);
   builder_.add_instrument(instrument);
+  builder_.add_open24h(open24h);
+  builder_.add_last_size(last_size);
   builder_.add_last_price(last_price);
   builder_.add_action(action);
   builder_.add_table(table);
@@ -220,6 +242,8 @@ inline ::flatbuffers::Offset<TickerEvent> CreateTickerEventDirect(
     const char *table = nullptr,
     const char *action = nullptr,
     const char *last_price = nullptr,
+    const char *last_size = nullptr,
+    const char *open24h = nullptr,
     const char *instrument = nullptr,
     const char *base_asset = nullptr,
     const char *quote_asset = nullptr,
@@ -234,6 +258,8 @@ inline ::flatbuffers::Offset<TickerEvent> CreateTickerEventDirect(
   auto table__ = table ? _fbb.CreateString(table) : 0;
   auto action__ = action ? _fbb.CreateString(action) : 0;
   auto last_price__ = last_price ? _fbb.CreateString(last_price) : 0;
+  auto last_size__ = last_size ? _fbb.CreateString(last_size) : 0;
+  auto open24h__ = open24h ? _fbb.CreateString(open24h) : 0;
   auto instrument__ = instrument ? _fbb.CreateString(instrument) : 0;
   auto base_asset__ = base_asset ? _fbb.CreateString(base_asset) : 0;
   auto quote_asset__ = quote_asset ? _fbb.CreateString(quote_asset) : 0;
@@ -249,6 +275,8 @@ inline ::flatbuffers::Offset<TickerEvent> CreateTickerEventDirect(
       table__,
       action__,
       last_price__,
+      last_size__,
+      open24h__,
       instrument__,
       base_asset__,
       quote_asset__,
@@ -277,12 +305,16 @@ inline const ::flatbuffers::TypeTable *TickerEventTypeTable() {
     { ::flatbuffers::ET_STRING, 0, -1 },
     { ::flatbuffers::ET_STRING, 0, -1 },
     { ::flatbuffers::ET_STRING, 0, -1 },
+    { ::flatbuffers::ET_STRING, 0, -1 },
+    { ::flatbuffers::ET_STRING, 0, -1 },
     { ::flatbuffers::ET_ULONG, 0, -1 }
   };
   static const char * const names[] = {
     "table",
     "action",
     "last_price",
+    "last_size",
+    "open24h",
     "instrument",
     "base_asset",
     "quote_asset",
@@ -296,7 +328,7 @@ inline const ::flatbuffers::TypeTable *TickerEventTypeTable() {
     "timestamp"
   };
   static const ::flatbuffers::TypeTable tt = {
-    ::flatbuffers::ST_TABLE, 14, type_codes, nullptr, nullptr, nullptr, names
+    ::flatbuffers::ST_TABLE, 16, type_codes, nullptr, nullptr, nullptr, names
   };
   return &tt;
 }
