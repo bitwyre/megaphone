@@ -29,7 +29,7 @@ FetchContent_declare(
 FetchContent_declare(
     zenohc_backend
     GIT_REPOSITORY https://github.com/eclipse-zenoh/zenoh-c
-    GIT_TAG 5993ddb
+    GIT_TAG 14133431b7a82743c0fd05ae51f5ff87c858cd02
 )
 
 # Fetch dependancy: Zenoh
