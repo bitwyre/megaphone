@@ -1,12 +1,6 @@
 {
-  mode: "router",
-  listen: {
+  mode: "peer",
+  connect: {
     endpoints: ["tcp/10.60.3.35:1337"],
-  },
-  routing: {
-    forward: true,
-  },
-  scouting: {
-    multicast: true,
   },
 }
