@@ -1,6 +1,12 @@
 {
-  mode: "peer",
+  mode: "router",
   listen: {
-    endpoints: ["tcp/0.0.0.0:1337"]
-  }
+    endpoints: ["tcp/0.0.0.0:1337"],
+  },
+  routing: {
+    forward: true,
+  },
+  scouting: {
+    multicast: true,
+  },
 }
