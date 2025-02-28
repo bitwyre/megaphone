@@ -1,7 +1,7 @@
 {
   mode: "router",
   listen: {
-    endpoints: ["tcp/0.0.0.0:1337"],
+    endpoints: ["tcp/10.60.3.35:1337"],
   },
   routing: {
     forward: true,
