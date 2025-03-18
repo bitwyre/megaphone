@@ -1,6 +1,6 @@
 {
   mode: "peer",
   connect: {
-    endpoints: ["tcp/10.60.3.35:1337"],
+    endpoints: ["tcp/10.70.2.30:1337"],
   },
 }
